@@ -1,21 +1,84 @@
 import { useState, useEffect } from "react";
 
 // ============================================================
+// TYPES
+// ============================================================
+interface User {
+  id: number;
+  nome: string;
+  email: string;
+  senha: string;
+  role: string;
+  funcao: string;
+  avatar: string;
+}
+
+interface Cliente {
+  id: number;
+  nome: string;
+}
+
+interface Tarefa {
+  id: number;
+  titulo: string;
+  descricao: string;
+  status: string;
+  prioridade: string;
+  solicitante_id: number;
+  responsavel_id: number;
+  cliente_id: number;
+  data_entrega: string;
+  criado_em: string;
+}
+
+interface StatusConfigEntry {
+  label: string;
+  color: string;
+  bg: string;
+  accent: string;
+}
+
+interface PrioridadeConfigEntry {
+  label: string;
+  color: string;
+}
+
+interface SupabaseFetchOptions extends Omit<RequestInit, "headers"> {
+  prefer?: string;
+  headers?: Record<string, string>;
+}
+
+type FormState = {
+  titulo: string;
+  descricao: string;
+  status: string;
+  prioridade: string;
+  solicitante_id: string;
+  responsavel_id: string;
+  cliente_id: string;
+  data_entrega: string;
+};
+
+// ============================================================
 // CONFIGURAÇÃO SUPABASE
 // Substitua pelas suas credenciais do Supabase
 // ============================================================
 const SUPABASE_URL = "https://SEU_PROJECT.supabase.co";
 const SUPABASE_KEY = "SUA_ANON_KEY";
 
-async function supabase(path, options = {}) {
+export async function supabase(
+  path: string,
+  options: SupabaseFetchOptions = {}
+): Promise<unknown> {
+  const { prefer, ...fetchInit } = options;
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     headers: {
       apikey: SUPABASE_KEY,
       Authorization: `Bearer ${SUPABASE_KEY}`,
       "Content-Type": "application/json",
-      Prefer: options.prefer || "return=representation",
+      Prefer: prefer || "return=representation",
     },
-    ...options,
+    ...fetchInit,
   });
   if (!res.ok) {
     const err = await res.text();
@@ -28,20 +91,20 @@ async function supabase(path, options = {}) {
 // ============================================================
 // DADOS MOCK (usado quando Supabase não está configurado)
 // ============================================================
-const MOCK_USERS = [
+const MOCK_USERS: User[] = [
   { id: 1, nome: "Rodrigo Creado", email: "rodrigo@rcdigital.com", senha: "admin123", role: "admin", funcao: "Gestor", avatar: "RC" },
   { id: 2, nome: "Ana Silva", email: "ana@rcdigital.com", senha: "team123", role: "team", funcao: "Designer", avatar: "AS" },
   { id: 3, nome: "Carlos Lima", email: "carlos@rcdigital.com", senha: "team123", role: "team", funcao: "Tráfego", avatar: "CL" },
 ];
 
-const MOCK_CLIENTES = [
+const MOCK_CLIENTES: Cliente[] = [
   { id: 1, nome: "Loja Fashion Store" },
   { id: 2, nome: "Construtora Alpha" },
   { id: 3, nome: "Clínica Bella Vida" },
   { id: 4, nome: "Tech Solutions" },
 ];
 
-const MOCK_TAREFAS = [
+const MOCK_TAREFAS: Tarefa[] = [
   {
     id: 1, titulo: "Criar criativos para campanha de março", descricao: "Desenvolver 5 peças para Meta Ads",
     status: "a_fazer", prioridade: "alta", solicitante_id: 1, responsavel_id: 2, cliente_id: 1,
@@ -64,14 +127,14 @@ const MOCK_TAREFAS = [
   },
 ];
 
-const STATUS_CONFIG = {
+const STATUS_CONFIG: Record<string, StatusConfigEntry> = {
   a_fazer: { label: "A Fazer", color: "#6B7280", bg: "#1F2937", accent: "#9CA3AF" },
   em_andamento: { label: "Em Andamento", color: "#D4A017", bg: "#1C1600", accent: "#F0C040" },
   em_revisao: { label: "Em Revisão", color: "#7C3AED", bg: "#1E0A3C", accent: "#A78BFA" },
   concluido: { label: "Concluído", color: "#059669", bg: "#002010", accent: "#34D399" },
 };
 
-const PRIORIDADE_CONFIG = {
+const PRIORIDADE_CONFIG: Record<string, PrioridadeConfigEntry> = {
   baixa: { label: "Baixa", color: "#6B7280" },
   media: { label: "Média", color: "#D4A017" },
   alta: { label: "Alta", color: "#EF4444" },
@@ -84,7 +147,7 @@ const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700;800&family=DM+Mono:wght@300;400;500&display=swap');
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  
+
   :root {
     --gold: #C9A84C;
     --gold-light: #F0C040;
@@ -320,7 +383,7 @@ const styles = `
   .modal-close:hover { border-color: var(--gold); color: var(--gold); }
   .modal-body { padding: 24px; display: flex; flex-direction: column; gap: 18px; }
   .modal-footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; gap: 10px; justify-content: flex-end; }
-  
+
   .form-group { display: flex; flex-direction: column; gap: 6px; }
   .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   .form-label { font-size: 10px; font-weight: 700; color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase; }
@@ -363,7 +426,7 @@ const styles = `
 
   /* EMPTY */
   .empty-col { text-align: center; padding: 24px 12px; color: var(--text-dim); font-size: 12px; }
-  
+
   /* SCROLLBAR */
   ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: var(--dark); }
@@ -387,29 +450,34 @@ const styles = `
 // ============================================================
 // UTILS
 // ============================================================
-function formatDate(d) {
+function formatDate(d: string | null | undefined): string {
   if (!d) return "—";
   const date = new Date(d + "T00:00:00");
   return date.toLocaleDateString("pt-BR");
 }
 
-function isOverdue(d) {
+function isOverdue(d: string | null | undefined): boolean {
   if (!d) return false;
-  return new Date(d + "T00:00:00") < new Date() && true;
+  return new Date(d + "T00:00:00") < new Date();
 }
 
-function getUserInitials(nome) {
+function getUserInitials(nome: string | undefined): string {
   return nome?.split(" ").slice(0, 2).map(n => n[0]).join("") || "?";
 }
 
 // ============================================================
 // COMPONENTS
 // ============================================================
-function Toast({ msg, onClose }) {
+interface ToastProps {
+  msg: string;
+  onClose: () => void;
+}
+
+function Toast({ msg, onClose }: ToastProps) {
   useEffect(() => {
     const t = setTimeout(onClose, 3000);
     return () => clearTimeout(t);
-  }, []);
+  }, [onClose]);
   return (
     <div className="toast">
       <span className="toast-icon">✦</span>
@@ -418,10 +486,17 @@ function Toast({ msg, onClose }) {
   );
 }
 
-function TaskCard({ tarefa, usuarios, clientes, onClick }) {
+interface TaskCardProps {
+  tarefa: Tarefa;
+  usuarios: User[];
+  clientes: Cliente[];
+  onClick: (tarefa: Tarefa) => void;
+}
+
+function TaskCard({ tarefa, usuarios, clientes, onClick }: TaskCardProps) {
   const responsavel = usuarios.find(u => u.id === tarefa.responsavel_id);
   const cliente = clientes.find(c => c.id === tarefa.cliente_id);
-  const prio = PRIORIDADE_CONFIG[tarefa.prioridade] || PRIORIDADE_CONFIG.media;
+  const prio = PRIORIDADE_CONFIG[tarefa.prioridade] || PRIORIDADE_CONFIG["media"];
   const overdue = isOverdue(tarefa.data_entrega) && tarefa.status !== "concluido";
 
   return (
@@ -461,13 +536,23 @@ function TaskCard({ tarefa, usuarios, clientes, onClick }) {
   );
 }
 
-function TaskDetailModal({ tarefa, usuarios, clientes, currentUser, onClose, onUpdate, onDelete }) {
+interface TaskDetailModalProps {
+  tarefa: Tarefa;
+  usuarios: User[];
+  clientes: Cliente[];
+  currentUser: User;
+  onClose: () => void;
+  onUpdate: (tarefa: Tarefa) => void;
+  onDelete: (id: number) => void;
+}
+
+function TaskDetailModal({ tarefa, usuarios, clientes, currentUser, onClose, onUpdate, onDelete }: TaskDetailModalProps) {
   const [status, setStatus] = useState(tarefa.status);
   const responsavel = usuarios.find(u => u.id === tarefa.responsavel_id);
   const solicitante = usuarios.find(u => u.id === tarefa.solicitante_id);
   const cliente = clientes.find(c => c.id === tarefa.cliente_id);
 
-  const handleStatusChange = (s) => {
+  const handleStatusChange = (s: string) => {
     setStatus(s);
     onUpdate({ ...tarefa, status: s });
   };
@@ -553,14 +638,23 @@ function TaskDetailModal({ tarefa, usuarios, clientes, currentUser, onClose, onU
   );
 }
 
-function NewTaskModal({ usuarios, clientes, currentUser, onClose, onSave, initialStatus }) {
-  const [form, setForm] = useState({
+interface NewTaskModalProps {
+  usuarios: User[];
+  clientes: Cliente[];
+  currentUser: User;
+  onClose: () => void;
+  onSave: (tarefa: Tarefa) => void;
+  initialStatus: string;
+}
+
+function NewTaskModal({ usuarios, clientes, currentUser, onClose, onSave, initialStatus }: NewTaskModalProps) {
+  const [form, setForm] = useState<FormState>({
     titulo: "", descricao: "", status: initialStatus || "a_fazer",
-    prioridade: "media", solicitante_id: currentUser.id,
+    prioridade: "media", solicitante_id: String(currentUser.id),
     responsavel_id: "", cliente_id: "", data_entrega: ""
   });
 
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const set = (k: keyof FormState, v: string) => setForm(f => ({ ...f, [k]: v }));
 
   const handleSave = () => {
     if (!form.titulo.trim()) return;
@@ -650,29 +744,38 @@ function NewTaskModal({ usuarios, clientes, currentUser, onClose, onSave, initia
 // ============================================================
 // PAGES
 // ============================================================
-function KanbanPage({ tarefas, setTarefas, usuarios, clientes, currentUser, showToast }) {
-  const [newModal, setNewModal] = useState(null); // status inicial
-  const [detailModal, setDetailModal] = useState(null);
+interface KanbanPageProps {
+  tarefas: Tarefa[];
+  setTarefas: (fn: (prev: Tarefa[]) => Tarefa[]) => void;
+  usuarios: User[];
+  clientes: Cliente[];
+  currentUser: User;
+  showToast: (msg: string) => void;
+}
+
+function KanbanPage({ tarefas, setTarefas, usuarios, clientes, currentUser, showToast }: KanbanPageProps) {
+  const [newModal, setNewModal] = useState<string | null>(null);
+  const [detailModal, setDetailModal] = useState<Tarefa | null>(null);
   const [filtroResp, setFiltroResp] = useState("");
 
   const tarefasFiltradas = filtroResp
     ? tarefas.filter(t => t.responsavel_id === Number(filtroResp))
     : tarefas;
 
-  const tarefasPorStatus = (status) => tarefasFiltradas.filter(t => t.status === status);
+  const tarefasPorStatus = (status: string) => tarefasFiltradas.filter(t => t.status === status);
 
-  const handleSaveTask = (tarefa) => {
+  const handleSaveTask = (tarefa: Tarefa) => {
     setTarefas(prev => [...prev, tarefa]);
     setNewModal(null);
     showToast("Tarefa criada com sucesso!");
   };
 
-  const handleUpdateTask = (updated) => {
+  const handleUpdateTask = (updated: Tarefa) => {
     setTarefas(prev => prev.map(t => t.id === updated.id ? updated : t));
     showToast("Tarefa atualizada!");
   };
 
-  const handleDeleteTask = (id) => {
+  const handleDeleteTask = (id: number) => {
     setTarefas(prev => prev.filter(t => t.id !== id));
     setDetailModal(null);
     showToast("Tarefa removida.");
@@ -742,7 +845,14 @@ function KanbanPage({ tarefas, setTarefas, usuarios, clientes, currentUser, show
   );
 }
 
-function ComingSoon({ icon, title, desc, tag }) {
+interface ComingSoonProps {
+  icon: string;
+  title: string;
+  desc: string;
+  tag: string;
+}
+
+function ComingSoon({ icon, title, desc, tag }: ComingSoonProps) {
   return (
     <div className="coming-soon">
       <div className="coming-soon-icon">{icon}</div>
@@ -757,15 +867,15 @@ function ComingSoon({ icon, title, desc, tag }) {
 // APP
 // ============================================================
 export default function App() {
-  const [currentUser, setCurrentUser] = useState(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [loginError, setLoginError] = useState("");
   const [tab, setTab] = useState("tarefas");
-  const [tarefas, setTarefas] = useState(MOCK_TAREFAS);
-  const [toast, setToast] = useState(null);
+  const [tarefas, setTarefas] = useState<Tarefa[]>(MOCK_TAREFAS);
+  const [toast, setToast] = useState<string | null>(null);
 
-  const showToast = (msg) => {
+  const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(null), 3500);
   };
