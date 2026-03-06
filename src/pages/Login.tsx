@@ -88,12 +88,7 @@ export default function Login() {
                     </form>
                 </div>
 
-                {/* Demo credentials hint */}
-                <div className="mt-6 bg-dark-300/50 border border-dark-500/50 rounded-xl p-4 text-xs text-gray-500 text-center">
-                    <p className="font-semibold text-gray-400 mb-2">Credenciais de demonstração</p>
-                    <p><span className="text-gold font-mono">rodrigo@rcdigital.com</span> / <span className="font-mono">admin123</span> — Admin</p>
-                    <p className="mt-1"><span className="text-gold font-mono">ana@rcdigital.com</span> / <span className="font-mono">team123</span> — Team</p>
-                </div>
+
             </div>
         </div>
     )
