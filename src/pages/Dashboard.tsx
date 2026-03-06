@@ -1,12 +1,11 @@
-import { useMemo } from 'react'
+import { useMemo, useEffect, useState } from 'react'
 import { Users, DollarSign, AlertTriangle, Star } from 'lucide-react'
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
     PieChart, Pie, Cell
 } from 'recharts'
-import { mockClientes, mockTarefas } from '../lib/mockData'
-
-const TODAY = new Date('2026-03-05')
+import { supabase } from '../lib/supabase'
+import type { Cliente, Tarefa } from '../types'
 
 function brl(v: number) {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(v)
@@ -31,16 +30,34 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 }
 
 export default function Dashboard() {
-    const ativos = useMemo(() => mockClientes.filter(c => c.status === 'Ativo'), [])
+    const [clientes, setClientes] = useState<Cliente[]>([])
+    const [tarefas, setTarefas] = useState<Tarefa[]>([])
+    const [loading, setLoading] = useState(true)
+
+    useEffect(() => {
+        const fetchData = async () => {
+            setLoading(true)
+            const [clientesRes, tarefasRes] = await Promise.all([
+                supabase!.from('clientes').select('*'),
+                supabase!.from('tarefas').select('*'),
+            ])
+            setClientes((clientesRes.data || []) as Cliente[])
+            setTarefas((tarefasRes.data || []) as Tarefa[])
+            setLoading(false)
+        }
+        fetchData()
+    }, [])
+
+    const ativos = useMemo(() => clientes.filter(c => c.status === 'Ativo'), [clientes])
 
     const receitaMensal = useMemo(() =>
         ativos.reduce((sum, c) => sum + (c.contrato_mensal || 0), 0), [ativos])
 
     const atrasadas = useMemo(() =>
-        mockTarefas.filter(t => {
+        tarefas.filter(t => {
             if (!t.data_vencimento || t.status === 'Concluído') return false
-            return new Date(t.data_vencimento + 'T00:00:00') < TODAY
-        }).length, [])
+            return new Date(t.data_vencimento + 'T00:00:00') < new Date()
+        }).length, [tarefas])
 
     const npsMedia = useMemo(() => {
         const com = ativos.filter(c => c.nps !== undefined)
@@ -74,12 +91,20 @@ export default function Dashboard() {
         { label: 'NPS Médio', value: npsMedia, icon: Star, color: 'text-green-400', bg: 'bg-green-400/10' },
     ]
 
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-full text-gray-500 text-sm">
+                Carregando dashboard...
+            </div>
+        )
+    }
+
     return (
         <div className="p-6 space-y-6">
             {/* Header */}
             <div>
                 <h1 className="text-xl font-bold text-white">Dashboard</h1>
-                <p className="text-gray-500 text-xs mt-0.5">Visão geral da agência · Março 2026</p>
+                <p className="text-gray-500 text-xs mt-0.5">Visão geral da agência</p>
             </div>
 
             {/* Stat cards */}
@@ -102,17 +127,21 @@ export default function Dashboard() {
                 {/* Bar chart */}
                 <div className="xl:col-span-2 card">
                     <h2 className="text-sm font-bold text-gray-200 mb-4">Faturado vs Meta — Clientes Ativos</h2>
-                    <ResponsiveContainer width="100%" height={280}>
-                        <BarChart data={barData} barCategoryGap="30%">
-                            <CartesianGrid strokeDasharray="3 3" stroke="#222" />
-                            <XAxis dataKey="name" tick={{ fill: '#666', fontSize: 11 }} />
-                            <YAxis tick={{ fill: '#666', fontSize: 11 }} tickFormatter={v => `R$${(v / 1000).toFixed(0)}k`} />
-                            <Tooltip content={<CustomTooltip />} />
-                            <Legend wrapperStyle={{ fontSize: 11, color: '#888' }} />
-                            <Bar dataKey="Meta" fill="#333" radius={[4, 4, 0, 0]} />
-                            <Bar dataKey="Faturado" fill="#C9A84C" radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                    </ResponsiveContainer>
+                    {barData.length === 0 ? (
+                        <div className="flex items-center justify-center h-[280px] text-gray-600 text-sm">Nenhum cliente ativo</div>
+                    ) : (
+                        <ResponsiveContainer width="100%" height={280}>
+                            <BarChart data={barData} barCategoryGap="30%">
+                                <CartesianGrid strokeDasharray="3 3" stroke="#222" />
+                                <XAxis dataKey="name" tick={{ fill: '#666', fontSize: 11 }} />
+                                <YAxis tick={{ fill: '#666', fontSize: 11 }} tickFormatter={v => `R$${(v / 1000).toFixed(0)}k`} />
+                                <Tooltip content={<CustomTooltip />} />
+                                <Legend wrapperStyle={{ fontSize: 11, color: '#888' }} />
+                                <Bar dataKey="Meta" fill="#333" radius={[4, 4, 0, 0]} />
+                                <Bar dataKey="Faturado" fill="#C9A84C" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    )}
                 </div>
 
                 {/* NPS donut */}
@@ -155,18 +184,18 @@ export default function Dashboard() {
                 </div>
             </div>
 
-            {/* Recent tasks */}
+            {/* Recent overdue tasks */}
             <div className="card">
                 <h2 className="text-sm font-bold text-gray-200 mb-4">Tarefas Atrasadas</h2>
                 <div className="space-y-2">
-                    {mockTarefas
-                        .filter(t => t.data_vencimento && t.status !== 'Concluído' && new Date(t.data_vencimento + 'T00:00:00') < TODAY)
+                    {tarefas
+                        .filter(t => t.data_vencimento && t.status !== 'Concluído' && new Date(t.data_vencimento + 'T00:00:00') < new Date())
                         .slice(0, 5)
                         .map(t => (
                             <div key={t.id} className="flex items-center justify-between py-2 border-b border-dark-500/50 last:border-0">
                                 <div>
                                     <p className="text-sm font-medium text-gray-300">{t.titulo}</p>
-                                    <p className="text-xs text-gray-600">{t.cliente_nome} · {t.responsavel}</p>
+                                    <p className="text-xs text-gray-600">{t.responsavel}</p>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <span className="badge bg-red-500/20 text-red-400">

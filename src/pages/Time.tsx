@@ -1,10 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, Pencil, Trash2, Phone, Briefcase } from 'lucide-react'
 import type { MembroTime } from '../types'
-import { mockMembros } from '../lib/mockData'
+import { supabase } from '../lib/supabase'
 import MemberModal from '../components/team/MemberModal'
-
-function genId() { return Math.random().toString(36).slice(2) }
 
 function getInitials(nome: string) {
     return nome.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
@@ -19,27 +17,41 @@ const BG_COLORS = [
 ]
 
 export default function Time() {
-    const [members, setMembers] = useState<MembroTime[]>(mockMembros)
+    const [members, setMembers] = useState<MembroTime[]>([])
+    const [loading, setLoading] = useState(true)
     const [showModal, setShowModal] = useState(false)
     const [editing, setEditing] = useState<MembroTime | null>(null)
+
+    const fetchMembers = async () => {
+        setLoading(true)
+        const { data } = await supabase!
+            .from('membros_time')
+            .select('*')
+            .order('criado_em', { ascending: true })
+        setMembers((data || []) as MembroTime[])
+        setLoading(false)
+    }
+
+    useEffect(() => { fetchMembers() }, [])
 
     const openNew = () => { setEditing(null); setShowModal(true) }
     const openEdit = (m: MembroTime) => { setEditing(m); setShowModal(true) }
     const closeModal = () => { setShowModal(false); setEditing(null) }
 
-    const handleSave = (data: Omit<MembroTime, 'id'>) => {
+    const handleSave = async (data: Omit<MembroTime, 'id'>) => {
         if (editing) {
-            setMembers(prev => prev.map(m => m.id === editing.id ? { ...m, ...data } : m))
+            await supabase!.from('membros_time').update(data).eq('id', editing.id)
         } else {
-            setMembers(prev => [...prev, { ...data, id: genId() }])
+            await supabase!.from('membros_time').insert(data)
         }
+        await fetchMembers()
         closeModal()
     }
 
-    const handleDelete = (id: string) => {
-        if (confirm('Remover este membro?')) {
-            setMembers(prev => prev.filter(m => m.id !== id))
-        }
+    const handleDelete = async (id: string) => {
+        if (!confirm('Remover este membro?')) return
+        await supabase!.from('membros_time').delete().eq('id', id)
+        setMembers(prev => prev.filter(m => m.id !== id))
     }
 
     return (
@@ -53,60 +65,60 @@ export default function Time() {
             </div>
 
             <div className="flex-1 overflow-auto p-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {members.map((m, i) => (
-                        <div key={m.id} className="card flex flex-col items-center text-center group hover:border-gold/20 transition-all duration-200">
-                            {/* Avatar */}
-                            {m.foto_url ? (
-                                <img src={m.foto_url} alt={m.nome} className="w-20 h-20 rounded-2xl object-cover mb-4 border-2 border-dark-500" />
-                            ) : (
-                                <div className={`w-20 h-20 rounded-2xl flex items-center justify-center text-2xl font-bold mb-4 ${BG_COLORS[i % BG_COLORS.length]}`}>
-                                    {getInitials(m.nome)}
+                {loading ? (
+                    <div className="flex items-center justify-center h-full text-gray-500 text-sm">Carregando membros...</div>
+                ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        {members.map((m, i) => (
+                            <div key={m.id} className="card flex flex-col items-center text-center group hover:border-gold/20 transition-all duration-200">
+                                {m.foto_url ? (
+                                    <img src={m.foto_url} alt={m.nome} className="w-20 h-20 rounded-2xl object-cover mb-4 border-2 border-dark-500" />
+                                ) : (
+                                    <div className={`w-20 h-20 rounded-2xl flex items-center justify-center text-2xl font-bold mb-4 ${BG_COLORS[i % BG_COLORS.length]}`}>
+                                        {getInitials(m.nome)}
+                                    </div>
+                                )}
+
+                                <h3 className="font-bold text-gray-200 text-sm mb-1">{m.nome}</h3>
+                                {m.funcao && (
+                                    <p className="flex items-center gap-1 text-xs text-gold/70 mb-2">
+                                        <Briefcase size={10} />{m.funcao}
+                                    </p>
+                                )}
+                                {m.telefone && (
+                                    <p className="flex items-center gap-1 text-xs text-gray-500">
+                                        <Phone size={10} />{m.telefone}
+                                    </p>
+                                )}
+
+                                <div className="flex gap-2 mt-4 opacity-0 group-hover:opacity-100 transition-all duration-200">
+                                    <button
+                                        onClick={() => openEdit(m)}
+                                        className="flex items-center gap-1 text-xs text-gray-400 hover:text-gold px-2.5 py-1.5 rounded-lg bg-dark-500 hover:bg-gold/10 transition-all"
+                                    >
+                                        <Pencil size={11} /> Editar
+                                    </button>
+                                    <button
+                                        onClick={() => handleDelete(m.id)}
+                                        className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-400 px-2.5 py-1.5 rounded-lg bg-dark-500 hover:bg-red-500/10 transition-all"
+                                    >
+                                        <Trash2 size={11} /> Remover
+                                    </button>
                                 </div>
-                            )}
-
-                            {/* Info */}
-                            <h3 className="font-bold text-gray-200 text-sm mb-1">{m.nome}</h3>
-                            {m.funcao && (
-                                <p className="flex items-center gap-1 text-xs text-gold/70 mb-2">
-                                    <Briefcase size={10} />{m.funcao}
-                                </p>
-                            )}
-                            {m.telefone && (
-                                <p className="flex items-center gap-1 text-xs text-gray-500">
-                                    <Phone size={10} />{m.telefone}
-                                </p>
-                            )}
-
-                            {/* Actions */}
-                            <div className="flex gap-2 mt-4 opacity-0 group-hover:opacity-100 transition-all duration-200">
-                                <button
-                                    onClick={() => openEdit(m)}
-                                    className="flex items-center gap-1 text-xs text-gray-400 hover:text-gold px-2.5 py-1.5 rounded-lg bg-dark-500 hover:bg-gold/10 transition-all"
-                                >
-                                    <Pencil size={11} /> Editar
-                                </button>
-                                <button
-                                    onClick={() => handleDelete(m.id)}
-                                    className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-400 px-2.5 py-1.5 rounded-lg bg-dark-500 hover:bg-red-500/10 transition-all"
-                                >
-                                    <Trash2 size={11} /> Remover
-                                </button>
                             </div>
-                        </div>
-                    ))}
+                        ))}
 
-                    {/* Add card */}
-                    <button
-                        onClick={openNew}
-                        className="card border-dashed border-dark-600 flex flex-col items-center justify-center gap-2 hover:border-gold/30 hover:bg-gold/5 transition-all duration-200 min-h-[180px] cursor-pointer"
-                    >
-                        <div className="w-10 h-10 rounded-full bg-dark-500 flex items-center justify-center">
-                            <Plus size={18} className="text-gray-500" />
-                        </div>
-                        <span className="text-xs text-gray-500">Adicionar Membro</span>
-                    </button>
-                </div>
+                        <button
+                            onClick={openNew}
+                            className="card border-dashed border-dark-600 flex flex-col items-center justify-center gap-2 hover:border-gold/30 hover:bg-gold/5 transition-all duration-200 min-h-[180px] cursor-pointer"
+                        >
+                            <div className="w-10 h-10 rounded-full bg-dark-500 flex items-center justify-center">
+                                <Plus size={18} className="text-gray-500" />
+                            </div>
+                            <span className="text-xs text-gray-500">Adicionar Membro</span>
+                        </button>
+                    </div>
+                )}
             </div>
 
             {showModal && (

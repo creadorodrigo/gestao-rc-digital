@@ -7,6 +7,7 @@ interface TaskModalProps {
     clientes: Cliente[]
     defaultStatus?: TaskStatus
     onSave: (task: Omit<Tarefa, 'id' | 'criado_em'>) => void
+    onDelete?: (id: string) => void
     onClose: () => void
 }
 
@@ -15,7 +16,7 @@ const STATUSES: TaskStatus[] = ['A Fazer', 'Em Andamento', 'Em Revisão', 'Concl
 const RECURRENCES: TaskRecurrence[] = ['não', 'diária', 'semanal', 'quinzenal', 'mensal']
 const ASSIGNEES = ['Rodrigo', 'Ana', 'Lucas', 'Camila']
 
-export default function TaskModal({ task, clientes, defaultStatus, onSave, onClose }: TaskModalProps) {
+export default function TaskModal({ task, clientes, defaultStatus, onSave, onDelete, onClose }: TaskModalProps) {
     const [form, setForm] = useState<Omit<Tarefa, 'id' | 'criado_em'>>({
         titulo: task?.titulo || '',
         descricao: task?.descricao || '',
@@ -118,6 +119,15 @@ export default function TaskModal({ task, clientes, defaultStatus, onSave, onClo
                     </div>
 
                     <div className="modal-footer">
+                        {task && onDelete && (
+                            <button
+                                type="button"
+                                onClick={() => onDelete(task.id)}
+                                className="btn-ghost text-red-400 hover:text-red-300 hover:bg-red-500/10 mr-auto"
+                            >
+                                Excluir Tarefa
+                            </button>
+                        )}
                         <button type="button" onClick={onClose} className="btn-secondary">Cancelar</button>
                         <button type="submit" className="btn-primary">
                             {task ? 'Salvar Alterações' : 'Criar Tarefa'}

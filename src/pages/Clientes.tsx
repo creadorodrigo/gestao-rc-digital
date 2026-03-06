@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, LayoutGrid, List, Search } from 'lucide-react'
 import type { Cliente } from '../types'
-import { mockClientes } from '../lib/mockData'
+import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import ClientCard from '../components/clients/ClientCard'
 import ClientModal from '../components/clients/ClientModal'
@@ -14,8 +14,6 @@ const KANBAN_STATUS_COLORS: Record<string, string> = {
     Encerrado: 'bg-red-400',
 }
 
-function genId() { return Math.random().toString(36).slice(2) }
-
 function brl(v?: number) {
     if (!v) return 'R$ 0'
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(v)
@@ -24,11 +22,24 @@ function brl(v?: number) {
 export default function Clientes() {
     const { user } = useAuth()
     const isAdmin = user?.role === 'admin'
-    const [clients, setClients] = useState<Cliente[]>(mockClientes)
+    const [clients, setClients] = useState<Cliente[]>([])
+    const [loading, setLoading] = useState(true)
     const [view, setView] = useState<'list' | 'kanban'>('kanban')
     const [search, setSearch] = useState('')
     const [modalClient, setModalClient] = useState<Cliente | null | undefined>(undefined)
     const [showModal, setShowModal] = useState(false)
+
+    const fetchClients = async () => {
+        setLoading(true)
+        const { data } = await supabase!
+            .from('clientes')
+            .select('*')
+            .order('criado_em', { ascending: false })
+        setClients((data || []) as Cliente[])
+        setLoading(false)
+    }
+
+    useEffect(() => { fetchClients() }, [])
 
     const filtered = clients.filter(c =>
         c.nome.toLowerCase().includes(search.toLowerCase())
@@ -38,12 +49,20 @@ export default function Clientes() {
     const openEdit = (c: Cliente) => { setModalClient(c); setShowModal(true) }
     const closeModal = () => { setShowModal(false); setModalClient(undefined) }
 
-    const handleSave = (data: Omit<Cliente, 'id' | 'criado_em'>) => {
+    const handleSave = async (data: Omit<Cliente, 'id' | 'criado_em'>) => {
         if (modalClient) {
-            setClients(prev => prev.map(c => c.id === modalClient.id ? { ...c, ...data } : c))
+            await supabase!.from('clientes').update(data).eq('id', modalClient.id)
         } else {
-            setClients(prev => [...prev, { ...data, id: genId(), criado_em: new Date().toISOString() }])
+            await supabase!.from('clientes').insert(data)
         }
+        await fetchClients()
+        closeModal()
+    }
+
+    const handleDelete = async (id: string) => {
+        if (!confirm('Remover este cliente? Esta ação não pode ser desfeita.')) return
+        await supabase!.from('clientes').delete().eq('id', id)
+        setClients(prev => prev.filter(c => c.id !== id))
         closeModal()
     }
 
@@ -58,7 +77,6 @@ export default function Clientes() {
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
-                    {/* Search */}
                     <div className="relative">
                         <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                         <input
@@ -68,7 +86,6 @@ export default function Clientes() {
                             onChange={e => setSearch(e.target.value)}
                         />
                     </div>
-                    {/* View toggle */}
                     <div className="flex bg-dark-400 rounded-lg p-0.5 border border-dark-600">
                         <button onClick={() => setView('kanban')} className={`p-1.5 rounded-md transition-all ${view === 'kanban' ? 'bg-dark-600 text-gold' : 'text-gray-500 hover:text-gray-300'}`}>
                             <LayoutGrid size={14} />
@@ -83,8 +100,9 @@ export default function Clientes() {
 
             {/* Content */}
             <div className="flex-1 overflow-auto p-6">
-                {view === 'kanban' ? (
-                    /* Kanban view */
+                {loading ? (
+                    <div className="flex items-center justify-center h-full text-gray-500 text-sm">Carregando clientes...</div>
+                ) : view === 'kanban' ? (
                     <div className="flex gap-4 h-full min-w-max">
                         {STATUS_ORDER.map(status => {
                             const col = filtered.filter(c => c.status === status)
@@ -107,7 +125,6 @@ export default function Clientes() {
                         })}
                     </div>
                 ) : (
-                    /* List view */
                     <div className="card overflow-hidden p-0">
                         <table className="w-full text-sm">
                             <thead>
@@ -137,23 +154,30 @@ export default function Clientes() {
                                         <td className="px-4 py-3 font-mono text-gray-300">{brl(c.investimento_mensal)}</td>
                                         <td className="px-4 py-3 font-mono text-gray-300">{brl(c.meta_faturamento)}</td>
                                         <td className="px-4 py-3 font-mono text-gray-300">{brl(c.faturado_ate_data)}</td>
-                                        <td className="px-4 py-3 text-gray-400 text-xs">{c.responsaveis.join(', ') || '—'}</td>
+                                        <td className="px-4 py-3 text-gray-400 text-xs">{c.responsaveis?.join(', ') || '—'}</td>
                                         {isAdmin && <td className="px-4 py-3 font-mono text-gold/80">{brl(c.contrato_mensal)}</td>}
                                     </tr>
                                 ))}
+                                {filtered.length === 0 && (
+                                    <tr>
+                                        <td colSpan={8} className="px-4 py-10 text-center text-gray-600 text-sm">
+                                            Nenhum cliente encontrado
+                                        </td>
+                                    </tr>
+                                )}
                             </tbody>
                         </table>
                     </div>
                 )}
             </div>
 
-            {/* Modal */}
             {showModal && (
                 <ClientModal
                     client={modalClient}
                     isAdmin={isAdmin}
                     onSave={handleSave}
                     onClose={closeModal}
+                    onDelete={isAdmin ? handleDelete : undefined}
                 />
             )}
         </div>

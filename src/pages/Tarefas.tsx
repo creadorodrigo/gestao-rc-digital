@@ -1,21 +1,45 @@
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Plus, ChevronDown } from 'lucide-react'
-import type { Tarefa, TaskStatus } from '../types'
-import { mockTarefas, mockClientes } from '../lib/mockData'
+import type { Tarefa, TaskStatus, Cliente } from '../types'
+import { supabase } from '../lib/supabase'
 import KanbanColumn from '../components/tasks/KanbanColumn'
 import TaskModal from '../components/tasks/TaskModal'
 
 const COLUMNS: TaskStatus[] = ['A Fazer', 'Em Andamento', 'Em Revisão', 'Concluído']
-const ASSIGNEES = ['Rodrigo', 'Ana', 'Lucas', 'Camila']
-
-function genId() { return Math.random().toString(36).slice(2) }
 
 export default function Tarefas() {
-    const [tasks, setTasks] = useState<Tarefa[]>(mockTarefas)
+    const [tasks, setTasks] = useState<Tarefa[]>([])
+    const [clients, setClients] = useState<Cliente[]>([])
+    const [loading, setLoading] = useState(true)
     const [modalOpen, setModalOpen] = useState(false)
     const [editingTask, setEditingTask] = useState<Tarefa | null>(null)
     const [defaultStatus, setDefaultStatus] = useState<TaskStatus>('A Fazer')
     const [filterAssignee, setFilterAssignee] = useState('')
+
+    const fetchAll = async () => {
+        setLoading(true)
+        const [tarefasRes, clientesRes] = await Promise.all([
+            supabase!.from('tarefas').select('*, clientes(nome)').order('criado_em', { ascending: false }),
+            supabase!.from('clientes').select('id, nome, tipo, status, investimento_mensal, meta_faturamento, faturado_ate_data, responsaveis').order('nome'),
+        ])
+        const mapped = (tarefasRes.data || []).map((t: any) => ({
+            ...t,
+            cliente_nome: t.clientes?.nome || '',
+            clientes: undefined,
+        })) as Tarefa[]
+        setTasks(mapped)
+        setClients((clientesRes.data || []) as Cliente[])
+        setLoading(false)
+    }
+
+    useEffect(() => { fetchAll() }, [])
+
+    // Build dynamic assignees list from task data
+    const assignees = useMemo(() => {
+        const set = new Set<string>()
+        tasks.forEach(t => { if (t.responsavel) set.add(t.responsavel) })
+        return Array.from(set).sort()
+    }, [tasks])
 
     const filteredTasks = useMemo(() =>
         filterAssignee ? tasks.filter(t => t.responsavel === filterAssignee) : tasks,
@@ -36,26 +60,30 @@ export default function Tarefas() {
         setModalOpen(true)
     }
 
-    const handleSaveTask = (data: Omit<Tarefa, 'id' | 'criado_em'>) => {
+    const handleSaveTask = async (data: Omit<Tarefa, 'id' | 'criado_em'>) => {
+        // Remove cliente_nome — not a DB column; derive from cliente_id FK
+        const { cliente_nome: _cn, ...payload } = data as any
         if (editingTask) {
-            setTasks(prev => prev.map(t => t.id === editingTask.id ? { ...t, ...data } : t))
+            await supabase!.from('tarefas').update(payload).eq('id', editingTask.id)
         } else {
-            const newTask: Tarefa = { ...data, id: genId(), criado_em: new Date().toISOString() }
-            setTasks(prev => [...prev, newTask])
+            await supabase!.from('tarefas').insert(payload)
         }
+        await fetchAll()
         setModalOpen(false)
         setEditingTask(null)
     }
 
-    const handleNewTask = () => {
-        setDefaultStatus('A Fazer')
+    const handleDeleteTask = async (id: string) => {
+        if (!confirm('Excluir esta tarefa?')) return
+        await supabase!.from('tarefas').delete().eq('id', id)
+        setTasks(prev => prev.filter(t => t.id !== id))
+        setModalOpen(false)
         setEditingTask(null)
-        setModalOpen(true)
     }
 
     const overdueCount = tasks.filter(t => {
         if (!t.data_vencimento || t.status === 'Concluído') return false
-        return new Date(t.data_vencimento + 'T00:00:00') < new Date('2026-03-05')
+        return new Date(t.data_vencimento + 'T00:00:00') < new Date()
     }).length
 
     return (
@@ -70,7 +98,6 @@ export default function Tarefas() {
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
-                    {/* Assignee filter */}
                     <div className="relative">
                         <select
                             value={filterAssignee}
@@ -78,11 +105,11 @@ export default function Tarefas() {
                             className="form-select pr-8 pl-3 py-1.5 text-xs appearance-none bg-dark-400 border-dark-600"
                         >
                             <option value="">Todos os responsáveis</option>
-                            {ASSIGNEES.map(a => <option key={a} value={a}>{a}</option>)}
+                            {assignees.map(a => <option key={a} value={a}>{a}</option>)}
                         </select>
                         <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
                     </div>
-                    <button onClick={handleNewTask} className="btn-primary">
+                    <button onClick={() => { setDefaultStatus('A Fazer'); setEditingTask(null); setModalOpen(true) }} className="btn-primary">
                         <Plus size={14} /> Nova Tarefa
                     </button>
                 </div>
@@ -90,26 +117,30 @@ export default function Tarefas() {
 
             {/* Kanban board */}
             <div className="flex-1 overflow-x-auto p-6">
-                <div className="flex gap-4 h-full min-w-max">
-                    {COLUMNS.map(col => (
-                        <KanbanColumn
-                            key={col}
-                            title={col}
-                            tasks={getColumnTasks(col)}
-                            onAddTask={handleAddTask}
-                            onEditTask={handleEditTask}
-                        />
-                    ))}
-                </div>
+                {loading ? (
+                    <div className="flex items-center justify-center h-full text-gray-500 text-sm">Carregando tarefas...</div>
+                ) : (
+                    <div className="flex gap-4 h-full min-w-max">
+                        {COLUMNS.map(col => (
+                            <KanbanColumn
+                                key={col}
+                                title={col}
+                                tasks={getColumnTasks(col)}
+                                onAddTask={handleAddTask}
+                                onEditTask={handleEditTask}
+                            />
+                        ))}
+                    </div>
+                )}
             </div>
 
-            {/* Modal */}
             {modalOpen && (
                 <TaskModal
                     task={editingTask}
-                    clientes={mockClientes}
+                    clientes={clients}
                     defaultStatus={defaultStatus}
                     onSave={handleSaveTask}
+                    onDelete={editingTask ? handleDeleteTask : undefined}
                     onClose={() => { setModalOpen(false); setEditingTask(null) }}
                 />
             )}

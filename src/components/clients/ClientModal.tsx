@@ -7,6 +7,7 @@ interface ClientModalProps {
     isAdmin: boolean
     onSave: (data: Omit<Cliente, 'id' | 'criado_em'>) => void
     onClose: () => void
+    onDelete?: (id: string) => void
 }
 
 const STATUS_OPTIONS: ClientStatus[] = ['Prospectando', 'Ativo', 'Encerrado']
@@ -28,7 +29,7 @@ function brl(val?: number) {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
 }
 
-export default function ClientModal({ client, isAdmin, onSave, onClose }: ClientModalProps) {
+export default function ClientModal({ client, isAdmin, onSave, onClose, onDelete }: ClientModalProps) {
     const [tab, setTab] = useState<'info' | 'edit'>(!client ? 'edit' : 'info')
     const [form, setForm] = useState<Omit<Cliente, 'id' | 'criado_em'>>({
         nome: client?.nome || '',
@@ -239,6 +240,15 @@ export default function ClientModal({ client, isAdmin, onSave, onClose }: Client
                             )}
                         </div>
                         <div className="modal-footer flex-shrink-0">
+                            {client && onDelete && (
+                                <button
+                                    type="button"
+                                    onClick={() => onDelete(client.id)}
+                                    className="btn-ghost text-red-400 hover:text-red-300 hover:bg-red-500/10 mr-auto"
+                                >
+                                    Excluir Cliente
+                                </button>
+                            )}
                             <button type="button" onClick={onClose} className="btn-secondary">Cancelar</button>
                             <button type="submit" className="btn-primary">{client ? 'Salvar' : 'Criar Cliente'}</button>
                         </div>

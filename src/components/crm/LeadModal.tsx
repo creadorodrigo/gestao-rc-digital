@@ -6,13 +6,14 @@ interface LeadModalProps {
     lead?: Lead | null
     defaultStatus?: LeadStatus
     onSave: (data: Omit<Lead, 'id' | 'criado_em'>) => void
+    onDelete?: (id: string) => void
     onClose: () => void
 }
 
 const STATUS_OPTIONS: LeadStatus[] = ['Leads', 'Contato Feito', 'Proposta Enviada', 'Negociação', 'Fechado', 'Perdido']
 const ORIGENS = ['Indicação', 'Instagram', 'LinkedIn', 'Google', 'Evento', 'Outro']
 
-export default function LeadModal({ lead, defaultStatus, onSave, onClose }: LeadModalProps) {
+export default function LeadModal({ lead, defaultStatus, onSave, onDelete, onClose }: LeadModalProps) {
     const [form, setForm] = useState({
         empresa: lead?.empresa || '',
         contato: lead?.contato || '',
@@ -74,6 +75,15 @@ export default function LeadModal({ lead, defaultStatus, onSave, onClose }: Lead
                         </div>
                     </div>
                     <div className="modal-footer">
+                        {lead && onDelete && (
+                            <button
+                                type="button"
+                                onClick={() => onDelete(lead.id)}
+                                className="btn-ghost text-red-400 hover:text-red-300 hover:bg-red-500/10 mr-auto"
+                            >
+                                Excluir Lead
+                            </button>
+                        )}
                         <button type="button" onClick={onClose} className="btn-secondary">Cancelar</button>
                         <button type="submit" className="btn-primary">{lead ? 'Salvar' : 'Criar Lead'}</button>
                     </div>
