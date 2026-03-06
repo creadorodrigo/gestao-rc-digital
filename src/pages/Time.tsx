@@ -69,7 +69,13 @@ export default function Time() {
 
         // Create the team display card using the admin's session
         const { error: insertError } = await supabase!.from('membros_time').insert(memberData)
-        if (insertError) throw new Error(insertError.message)
+        if (insertError) {
+            // Auth user was created OK but member card failed — give a clear message
+            throw new Error(
+                `Usuário de acesso criado, mas erro ao adicionar o card do time: ${insertError.message}. ` +
+                `Execute o SQL de correção de RLS no Supabase e tente adicionar o card manualmente.`
+            )
+        }
 
         await fetchMembers()
         closeModal()
