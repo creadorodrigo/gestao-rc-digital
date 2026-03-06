@@ -28,11 +28,11 @@ export const useAuth = () => useContext(AuthContext)
 
 // Demo users for mock mode (no Supabase)
 const DEMO_USERS: AuthUser[] = [
-    { id: 'admin-1', email: 'rodrigo@rcdigital.com', nome: 'Rodrigo Carvalho', role: 'admin' },
+    { id: 'admin-1', email: 'creado.rodrigo@gmail.com', nome: 'Rodrigo Carvalho', role: 'admin' },
     { id: 'team-1', email: 'ana@rcdigital.com', nome: 'Ana Paula', role: 'team' },
 ]
 const DEMO_PASSWORDS: Record<string, string> = {
-    'rodrigo@rcdigital.com': 'admin123',
+    'creado.rodrigo@gmail.com': 'admin123',
     'ana@rcdigital.com': 'team123',
 }
 
