@@ -68,12 +68,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return () => subscription.unsubscribe()
     }, [])
 
+    const ADMIN_EMAILS = ['creado.rodrigo@gmail.com']
+
     const loadUserProfile = async (id: string, email: string) => {
         const { data } = await supabase!.from('usuarios').select('*').eq('id', id).single()
         if (data) {
             setUser({ id: data.id, email: data.email || email, nome: data.nome || email, role: data.role || 'team' })
         } else {
-            setUser({ id, email, nome: email, role: 'team' })
+            // Fallback: derive role from known admin emails when no DB row exists
+            const role = ADMIN_EMAILS.includes(email) ? 'admin' : 'team'
+            setUser({ id, email, nome: email, role })
         }
     }
 
