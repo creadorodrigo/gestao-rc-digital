@@ -129,7 +129,7 @@ export default function Dashboard() {
                                     outerRadius={80}
                                     paddingAngle={3}
                                     dataKey="value"
-                                    label={({ name: _name, percent }: { name: string; percent?: number }) => percent && percent > 0 ? `${(percent * 100).toFixed(0)}%` : ''}
+                                    label={(props: any) => props.percent && props.percent > 0 ? `${(props.percent * 100).toFixed(0)}%` : ''}
                                     labelLine={false}
                                 >
                                     {npsGroups.map((_, i) => (
