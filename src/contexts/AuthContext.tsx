@@ -40,46 +40,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<AuthUser | null>(null)
     const [loading, setLoading] = useState(true)
 
+    const ADMIN_EMAILS = ['creado.rodrigo@gmail.com']
+
+    const loadUserProfile = async (id: string, email: string) => {
+        try {
+            const { data } = await supabase!.from('usuarios').select('*').eq('id', id).single()
+            if (data) {
+                setUser({ id: data.id, email: data.email || email, nome: data.nome || email, role: data.role || 'team' })
+            } else {
+                const role = ADMIN_EMAILS.includes(email) ? 'admin' : 'team'
+                setUser({ id, email, nome: email, role })
+            }
+        } catch {
+            // If query fails, fall back gracefully rather than hanging
+            const role = ADMIN_EMAILS.includes(email) ? 'admin' : 'team'
+            setUser({ id, email, nome: email, role })
+        }
+    }
+
     useEffect(() => {
         if (!isSupabaseConfigured) {
-            // Check localStorage for persisted demo session
             const stored = localStorage.getItem('rc_demo_user')
             if (stored) setUser(JSON.parse(stored))
             setLoading(false)
             return
         }
 
-        // Real Supabase auth
-        supabase!.auth.getSession().then(async ({ data: { session } }) => {
-            if (session?.user) {
-                await loadUserProfile(session.user.id, session.user.email || '')
-            }
-            setLoading(false)
-        })
-
-        const { data: { subscription } } = supabase!.auth.onAuthStateChange(async (event, session) => {
-            if (session?.user) {
-                await loadUserProfile(session.user.id, session.user.email || '')
-            } else {
-                setUser(null)
+        // Modern Supabase pattern: onAuthStateChange fires INITIAL_SESSION immediately,
+        // replacing getSession() and avoiding a double-load race condition.
+        const { data: { subscription } } = supabase!.auth.onAuthStateChange(async (_event, session) => {
+            try {
+                if (session?.user) {
+                    await loadUserProfile(session.user.id, session.user.email || '')
+                } else {
+                    setUser(null)
+                }
+            } finally {
+                // Always resolve loading — no matter what happens
+                setLoading(false)
             }
         })
 
         return () => subscription.unsubscribe()
     }, [])
-
-    const ADMIN_EMAILS = ['creado.rodrigo@gmail.com']
-
-    const loadUserProfile = async (id: string, email: string) => {
-        const { data } = await supabase!.from('usuarios').select('*').eq('id', id).single()
-        if (data) {
-            setUser({ id: data.id, email: data.email || email, nome: data.nome || email, role: data.role || 'team' })
-        } else {
-            // Fallback: derive role from known admin emails when no DB row exists
-            const role = ADMIN_EMAILS.includes(email) ? 'admin' : 'team'
-            setUser({ id, email, nome: email, role })
-        }
-    }
 
     const signIn = async (email: string, password: string): Promise<{ error: string | null }> => {
         if (!isSupabaseConfigured) {
