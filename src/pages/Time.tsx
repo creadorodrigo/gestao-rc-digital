@@ -41,9 +41,35 @@ export default function Time() {
     const handleSave = async (data: Omit<MembroTime, 'id'>) => {
         if (editing) {
             await supabase!.from('membros_time').update(data).eq('id', editing.id)
-        } else {
-            await supabase!.from('membros_time').insert(data)
+            await fetchMembers()
         }
+        closeModal()
+    }
+
+    const handleSaveNew = async (data: Omit<MembroTime, 'id'> & { email: string; password: string; role: 'admin' | 'team' }) => {
+        const { email, password, role, ...memberData } = data
+        const session = await supabase!.auth.getSession()
+        const token = session.data.session?.access_token
+
+        const res = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                    'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+                },
+                body: JSON.stringify({ email, password, role, ...memberData }),
+            }
+        )
+
+        const result = await res.json()
+        if (!res.ok) {
+            alert(`Erro ao criar usuário: ${result.error}`)
+            return
+        }
+
         await fetchMembers()
         closeModal()
     }
@@ -122,7 +148,7 @@ export default function Time() {
             </div>
 
             {showModal && (
-                <MemberModal member={editing} onSave={handleSave} onClose={closeModal} />
+                <MemberModal member={editing} onSave={handleSave} onSaveNew={handleSaveNew} onClose={closeModal} />
             )}
         </div>
     )
