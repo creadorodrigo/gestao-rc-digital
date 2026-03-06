@@ -12,9 +12,20 @@ export default function Login() {
         e.preventDefault()
         setError('')
         setLoading(true)
-        const { error: err } = await signIn(email, password)
-        if (err) setError(err)
-        setLoading(false)
+        try {
+            // Race against a 12-second timeout so the button never hangs forever
+            const result = await Promise.race([
+                signIn(email, password),
+                new Promise<{ error: string }>(resolve =>
+                    setTimeout(() => resolve({ error: 'Servidor não respondeu. Verifique sua conexão e tente novamente.' }), 12000)
+                ),
+            ])
+            if (result.error) setError(result.error)
+        } catch {
+            setError('Erro inesperado ao entrar. Tente novamente.')
+        } finally {
+            setLoading(false)
+        }
     }
 
     return (

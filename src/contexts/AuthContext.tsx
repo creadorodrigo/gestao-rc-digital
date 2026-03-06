@@ -107,9 +107,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return { error: 'E-mail ou senha inválidos.' }
         }
 
-        const { error } = await supabase!.auth.signInWithPassword({ email, password })
-        if (error) return { error: 'E-mail ou senha inválidos.' }
-        return { error: null }
+        try {
+            const { error } = await supabase!.auth.signInWithPassword({ email, password })
+            if (error) return { error: 'E-mail ou senha inválidos.' }
+            return { error: null }
+        } catch {
+            return { error: 'Erro ao conectar com o servidor. Tente novamente.' }
+        }
     }
 
     const signOut = () => {
