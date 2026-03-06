@@ -83,14 +83,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return
         }
 
-        const { data: { subscription } } = supabase!.auth.onAuthStateChange(async (_event, session) => {
-            try {
-                if (session?.user) {
-                    await loadUserProfile(session.user.id, session.user.email || '')
-                } else {
-                    resolveUser(null)
-                }
-            } catch { /* ignore — app already rendered */ }
+        const { data: { subscription } } = supabase!.auth.onAuthStateChange((_event, session) => {
+            // IMPORTANT: must NOT be async — Supabase SDK awaits all subscribers before
+            // returning from signInWithPassword, so any await here blocks the entire login.
+            // Run profile loading as a detached fire-and-forget task instead.
+            if (session?.user) {
+                loadUserProfile(session.user.id, session.user.email || '')
+                    .catch(() => {
+                        // Last-resort fallback if loadUserProfile throws
+                        const role: UserRole = ADMIN_EMAILS.includes(session.user!.email || '') ? 'admin' : 'team'
+                        resolveUser({ id: session.user!.id, email: session.user!.email || '', nome: session.user!.email || '', role })
+                    })
+            } else {
+                resolveUser(null)
+            }
         })
 
         return () => subscription.unsubscribe()
