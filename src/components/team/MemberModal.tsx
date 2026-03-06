@@ -40,23 +40,27 @@ export default function MemberModal({ member, onSave, onSaveNew, onClose }: Memb
         setError('')
         setLoading(true)
 
-        if (!isEditing && onSaveNew) {
-            if (!authForm.email.trim() || !authForm.password.trim()) {
-                setError('E-mail e senha são obrigatórios para criar um novo usuário.')
-                setLoading(false)
-                return
+        try {
+            if (!isEditing && onSaveNew) {
+                if (!authForm.email.trim() || !authForm.password.trim()) {
+                    setError('E-mail e senha são obrigatórios para criar um novo usuário.')
+                    setLoading(false)
+                    return
+                }
+                if (authForm.password.length < 6) {
+                    setError('A senha deve ter pelo menos 6 caracteres.')
+                    setLoading(false)
+                    return
+                }
+                await onSaveNew({ ...form, ...authForm })
+            } else {
+                onSave(form)
             }
-            if (authForm.password.length < 6) {
-                setError('A senha deve ter pelo menos 6 caracteres.')
-                setLoading(false)
-                return
-            }
-            await onSaveNew({ ...form, ...authForm })
-        } else {
-            onSave(form)
+        } catch (err: any) {
+            setError(err.message || 'Erro ao salvar. Tente novamente.')
+        } finally {
+            setLoading(false)
         }
-
-        setLoading(false)
     }
 
     return (

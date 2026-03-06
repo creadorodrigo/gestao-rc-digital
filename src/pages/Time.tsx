@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Plus, Pencil, Trash2, Phone, Briefcase } from 'lucide-react'
 import type { MembroTime } from '../types'
-import { supabase } from '../lib/supabase'
+import { supabase, isSupabaseConfigured } from '../lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 import MemberModal from '../components/team/MemberModal'
 
 function getInitials(nome: string) {
@@ -48,27 +49,27 @@ export default function Time() {
 
     const handleSaveNew = async (data: Omit<MembroTime, 'id'> & { email: string; password: string; role: 'admin' | 'team' }) => {
         const { email, password, role, ...memberData } = data
-        const session = await supabase!.auth.getSession()
-        const token = session.data.session?.access_token
 
-        const res = await fetch(
-            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                    'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-                },
-                body: JSON.stringify({ email, password, role, ...memberData }),
-            }
+        // Use a separate client so signUp doesn't replace the current admin session
+        const tempClient = createClient(
+            import.meta.env.VITE_SUPABASE_URL,
+            import.meta.env.VITE_SUPABASE_ANON_KEY,
+            { auth: { storageKey: 'rc-temp-signup', persistSession: false } }
         )
 
-        const result = await res.json()
-        if (!res.ok) {
-            alert(`Erro ao criar usuário: ${result.error}`)
-            return
-        }
+        // signUp passes nome + role via metadata → DB trigger creates usuarios row automatically
+        const { data: signUpData, error: signUpError } = await tempClient.auth.signUp({
+            email,
+            password,
+            options: { data: { nome: memberData.nome, role } },
+        })
+
+        if (signUpError) throw new Error(signUpError.message)
+        if (!signUpData.user) throw new Error('Falha ao criar usuário. Verifique se o e-mail já está cadastrado.')
+
+        // Create the team display card using the admin's session
+        const { error: insertError } = await supabase!.from('membros_time').insert(memberData)
+        if (insertError) throw new Error(insertError.message)
 
         await fetchMembers()
         closeModal()
