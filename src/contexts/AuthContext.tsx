@@ -54,12 +54,11 @@ function setCachedUser(u: AuthUser | null) {
 export function AuthProvider({ children }: { children: ReactNode }) {
     // Initialise instantly from cache — eliminates blank spinner on refresh
     const [user, setUser] = useState<AuthUser | null>(() => getCachedUser())
-    const [loading, setLoading] = useState<boolean>(() => !getCachedUser())
+    const [loading] = useState(false) // Never block rendering — auth resolves in background
 
     const resolveUser = (authUser: AuthUser | null) => {
         setUser(authUser)
         setCachedUser(authUser)
-        setLoading(false)
     }
 
     const loadUserProfile = async (id: string, email: string) => {
@@ -84,27 +83,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return
         }
 
-        // Safety net: if onAuthStateChange never fires within 6s, force-resolve
-        const timeout = setTimeout(() => {
-            setLoading(false)
-        }, 6000)
-
         const { data: { subscription } } = supabase!.auth.onAuthStateChange(async (_event, session) => {
-            clearTimeout(timeout)
             try {
                 if (session?.user) {
                     await loadUserProfile(session.user.id, session.user.email || '')
                 } else {
-                    // No active session — clear cache and redirect to login
                     resolveUser(null)
                 }
-            } catch {
-                setLoading(false)
-            }
+            } catch { /* ignore — app already rendered */ }
         })
 
-        return () => { clearTimeout(timeout); subscription.unsubscribe() }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        return () => subscription.unsubscribe()
     }, [])
 
     const signIn = async (email: string, password: string): Promise<{ error: string | null }> => {
