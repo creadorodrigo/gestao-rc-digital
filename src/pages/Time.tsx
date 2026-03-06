@@ -67,6 +67,16 @@ export default function Time() {
         if (signUpError) throw new Error(signUpError.message)
         if (!signUpData.user) throw new Error('Falha ao criar usuário. Verifique se o e-mail já está cadastrado.')
 
+        const newUserId = signUpData.user.id
+
+        // Explicitly upsert usuarios record — safety net if DB trigger is missing
+        await supabase!.from('usuarios').upsert({
+            id: newUserId,
+            email,
+            nome: memberData.nome,
+            role,
+        }, { onConflict: 'id' })
+
         // Create the team display card using the admin's session
         const { error: insertError } = await supabase!.from('membros_time').insert(memberData)
         if (insertError) {
