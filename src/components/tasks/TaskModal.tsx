@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { X, Calendar, User, Tag, RotateCcw, Building2, AlertCircle } from 'lucide-react'
-import type { Tarefa, TaskStatus, TaskPriority, TaskRecurrence, Cliente } from '../../types'
+import type { Tarefa, TaskStatus, TaskPriority, TaskRecurrence, Cliente, MembroTime } from '../../types'
 
 interface TaskModalProps {
     task?: Tarefa | null
     clientes: Cliente[]
+    membros: MembroTime[]
     defaultStatus?: TaskStatus
     onSave: (task: Omit<Tarefa, 'id' | 'criado_em'>) => void
     onDelete?: (id: string) => void
@@ -14,9 +15,8 @@ interface TaskModalProps {
 const PRIORITIES: TaskPriority[] = ['alta', 'média', 'baixa']
 const STATUSES: TaskStatus[] = ['A Fazer', 'Em Andamento', 'Em Revisão', 'Concluído']
 const RECURRENCES: TaskRecurrence[] = ['não', 'diária', 'semanal', 'quinzenal', 'mensal']
-const ASSIGNEES = ['Rodrigo', 'Ana', 'Lucas', 'Camila']
 
-export default function TaskModal({ task, clientes, defaultStatus, onSave, onDelete, onClose }: TaskModalProps) {
+export default function TaskModal({ task, clientes, membros, defaultStatus, onSave, onDelete, onClose }: TaskModalProps) {
     const [form, setForm] = useState<Omit<Tarefa, 'id' | 'criado_em'>>({
         titulo: task?.titulo || '',
         descricao: task?.descricao || '',
@@ -85,14 +85,14 @@ export default function TaskModal({ task, clientes, defaultStatus, onSave, onDel
                                 <label className="form-label flex items-center gap-1"><User size={10} />Solicitante</label>
                                 <select className="form-select" value={form.solicitante} onChange={set('solicitante')}>
                                     <option value="">Nenhum</option>
-                                    {ASSIGNEES.map(a => <option key={a} value={a}>{a}</option>)}
+                                    {membros.map(m => <option key={m.id} value={m.nome}>{m.nome}</option>)}
                                 </select>
                             </div>
                             <div>
                                 <label className="form-label flex items-center gap-1"><User size={10} />Responsável</label>
                                 <select className="form-select" value={form.responsavel} onChange={set('responsavel')}>
                                     <option value="">Nenhum</option>
-                                    {ASSIGNEES.map(a => <option key={a} value={a}>{a}</option>)}
+                                    {membros.map(m => <option key={m.id} value={m.nome}>{m.nome}</option>)}
                                 </select>
                             </div>
                         </div>

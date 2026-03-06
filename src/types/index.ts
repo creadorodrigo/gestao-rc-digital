@@ -72,4 +72,5 @@ export interface MembroTime {
     foto_url?: string
     telefone?: string
     funcao?: string
+    criado_em?: string
 }

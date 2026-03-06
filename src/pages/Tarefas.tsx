@@ -1,15 +1,19 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Plus, ChevronDown } from 'lucide-react'
-import type { Tarefa, TaskStatus, Cliente } from '../types'
+import type { Tarefa, TaskStatus, Cliente, MembroTime } from '../types'
 import { supabase } from '../lib/supabase'
 import KanbanColumn from '../components/tasks/KanbanColumn'
 import TaskModal from '../components/tasks/TaskModal'
+import { useAuth } from '../contexts/AuthContext'
 
 const COLUMNS: TaskStatus[] = ['A Fazer', 'Em Andamento', 'Em Revisão', 'Concluído']
 
 export default function Tarefas() {
+    const { user } = useAuth()
+    const isAdmin = user?.role === 'admin'
     const [tasks, setTasks] = useState<Tarefa[]>([])
     const [clients, setClients] = useState<Cliente[]>([])
+    const [membros, setMembros] = useState<MembroTime[]>([])
     const [loading, setLoading] = useState(true)
     const [modalOpen, setModalOpen] = useState(false)
     const [editingTask, setEditingTask] = useState<Tarefa | null>(null)
@@ -18,9 +22,10 @@ export default function Tarefas() {
 
     const fetchAll = async () => {
         setLoading(true)
-        const [tarefasRes, clientesRes] = await Promise.all([
+        const [tarefasRes, clientesRes, membrosRes] = await Promise.all([
             supabase!.from('tarefas').select('*, clientes(nome)').order('criado_em', { ascending: false }),
             supabase!.from('clientes').select('id, nome, tipo, status, investimento_mensal, meta_faturamento, faturado_ate_data, responsaveis').order('nome'),
+            supabase!.from('membros_time').select('id, nome, funcao').order('nome'),
         ])
         const mapped = (tarefasRes.data || []).map((t: any) => ({
             ...t,
@@ -29,6 +34,7 @@ export default function Tarefas() {
         })) as Tarefa[]
         setTasks(mapped)
         setClients((clientesRes.data || []) as Cliente[])
+        setMembros((membrosRes.data || []) as MembroTime[])
         setLoading(false)
     }
 
@@ -138,6 +144,7 @@ export default function Tarefas() {
                 <TaskModal
                     task={editingTask}
                     clientes={clients}
+                    membros={membros}
                     defaultStatus={defaultStatus}
                     onSave={handleSaveTask}
                     onDelete={editingTask ? handleDeleteTask : undefined}

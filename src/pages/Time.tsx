@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Plus, Pencil, Trash2, Phone, Briefcase } from 'lucide-react'
 import type { MembroTime } from '../types'
-import { supabase, isSupabaseConfigured } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import { createClient } from '@supabase/supabase-js'
 import MemberModal from '../components/team/MemberModal'
 
