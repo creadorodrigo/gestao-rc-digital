@@ -17,7 +17,7 @@ export default function Login() {
             const result = await Promise.race([
                 signIn(email, password),
                 new Promise<{ error: string }>(resolve =>
-                    setTimeout(() => resolve({ error: 'Servidor não respondeu. Verifique sua conexão e tente novamente.' }), 12000)
+                    setTimeout(() => resolve({ error: 'Servidor não respondeu após 30 segundos. Tente novamente em instantes.' }), 30000)
                 ),
             ])
             if (result.error) setError(result.error)
