@@ -10,7 +10,6 @@ const COLUMNS: TaskStatus[] = ['A Fazer', 'Em Andamento', 'Em Revisão', 'Conclu
 
 export default function Tarefas() {
     const { user } = useAuth()
-    const isAdmin = user?.role === 'admin'
     const [tasks, setTasks] = useState<Tarefa[]>([])
     const [clients, setClients] = useState<Cliente[]>([])
     const [membros, setMembros] = useState<MembroTime[]>([])
@@ -31,16 +30,21 @@ export default function Tarefas() {
                     solicitante_usuario:usuarios!solicitante_id(id, nome)
                 `)
                 .order('criado_em', { ascending: false }),
-            supabase!.from('clientes').select('id, nome, tipo, status, investimento_mensal, meta_faturamento, faturado_ate_data, responsaveis').order('nome'),
-            supabase!.from('membros_time').select('id, nome, funcao').order('nome'),
+            supabase!.from('clientes')
+                .select('id, nome, tipo, status, investimento_mensal, meta_faturamento, faturado_ate_data, responsaveis')
+                .order('nome'),
+            supabase!.from('membros_time')
+                .select('id, nome, funcao')
+                .order('nome'),
         ])
 
         const mapped = (tarefasRes.data || []).map((t: any) => ({
             ...t,
             cliente_nome: t.clientes?.nome || '',
-            // Preenche campos texto a partir das FKs (com fallback para o texto antigo)
             responsavel: t.responsavel_usuario?.nome || t.responsavel || '',
+            responsavel_id: t.responsavel_id || t.responsavel_usuario?.id || null,
             solicitante: t.solicitante_usuario?.nome || t.solicitante || '',
+            solicitante_id: t.solicitante_id || t.solicitante_usuario?.id || null,
             clientes: undefined,
             responsavel_usuario: undefined,
             solicitante_usuario: undefined,
@@ -82,11 +86,13 @@ export default function Tarefas() {
     const handleSaveTask = async (data: Omit<Tarefa, 'id' | 'criado_em'>) => {
         const { cliente_nome: _cn, ...payload } = data as any
 
-        // Se responsavel/solicitante são nomes, resolve para ID via membros
+        // Resolve responsavel_id a partir do nome se ainda não foi preenchido
         if (payload.responsavel && !payload.responsavel_id) {
             const membro = membros.find(m => m.nome === payload.responsavel)
             if (membro) payload.responsavel_id = membro.id
         }
+
+        // Resolve solicitante_id a partir do nome se ainda não foi preenchido
         if (payload.solicitante && !payload.solicitante_id) {
             const membro = membros.find(m => m.nome === payload.solicitante)
             if (membro) payload.solicitante_id = membro.id
@@ -117,13 +123,14 @@ export default function Tarefas() {
 
     return (
         <div className="flex flex-col h-screen">
-            {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-dark-500 bg-dark-200/50 backdrop-blur-sm flex-shrink-0">
                 <div>
                     <h1 className="text-xl font-bold text-white">Tarefas</h1>
                     <p className="text-gray-500 text-xs mt-0.5">
                         {tasks.length} tarefas
-                        {overdueCount > 0 && <span className="text-red-400 ml-2">• {overdueCount} atrasadas</span>}
+                        {overdueCount > 0 && (
+                            <span className="text-red-400 ml-2">• {overdueCount} atrasadas</span>
+                        )}
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -134,17 +141,62 @@ export default function Tarefas() {
                             className="form-select pr-8 pl-3 py-1.5 text-xs appearance-none bg-dark-400 border-dark-600"
                         >
                             <option value="">Todos os responsáveis</option>
-                            {assignees.map(a => <option key={a} value={a}>{a}</option>)}
+                            {assignees.map(a => (
+                                <option key={a} value={a}>{a}</option>
+                            ))}
                         </select>
-                        <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+                        <ChevronDown
+                            size={10}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none"
+                        />
                     </div>
-                    <button onClick={() => { setDefaultStatus('A Fazer'); setEditingTask(null); setModalOpen(true) }} className="btn-primary">
+                    <button
+                        onClick={() => {
+                            setDefaultStatus('A Fazer')
+                            setEditingTask(null)
+                            setModalOpen(true)
+                        }}
+                        className="btn-primary"
+                    >
                         <Plus size={14} /> Nova Tarefa
                     </button>
                 </div>
             </div>
 
-            {/* Kanban board */}
             <div className="flex-1 overflow-x-auto p-6">
                 {loading ? (
-                    <div className="flex items-center justify-center h-full text-gray-500 text-sm">Carregando tarefas.
+                    <div className="flex items-center justify-center h-full text-gray-500 text-sm">
+                        Carregando tarefas...
+                    </div>
+                ) : (
+                    <div className="flex gap-4 h-full min-w-max">
+                        {COLUMNS.map(col => (
+                            <KanbanColumn
+                                key={col}
+                                title={col}
+                                tasks={getColumnTasks(col)}
+                                onAddTask={handleAddTask}
+                                onEditTask={handleEditTask}
+                            />
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {modalOpen && (
+                <TaskModal
+                    task={editingTask}
+                    clientes={clients}
+                    membros={membros}
+                    defaultStatus={defaultStatus}
+                    onSave={handleSaveTask}
+                    onDelete={editingTask ? handleDeleteTask : undefined}
+                    onClose={() => {
+                        setModalOpen(false)
+                        setEditingTask(null)
+                    }}
+                />
+            )}
+        </div>
+    )
+}
