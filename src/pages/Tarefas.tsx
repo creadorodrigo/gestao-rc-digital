@@ -23,15 +23,29 @@ export default function Tarefas() {
     const fetchAll = async () => {
         setLoading(true)
         const [tarefasRes, clientesRes, membrosRes] = await Promise.all([
-            supabase!.from('tarefas').select('*, clientes(nome)').order('criado_em', { ascending: false }),
+            supabase!.from('tarefas')
+                .select(`
+                    *,
+                    clientes(nome),
+                    responsavel_usuario:usuarios!responsavel_id(id, nome),
+                    solicitante_usuario:usuarios!solicitante_id(id, nome)
+                `)
+                .order('criado_em', { ascending: false }),
             supabase!.from('clientes').select('id, nome, tipo, status, investimento_mensal, meta_faturamento, faturado_ate_data, responsaveis').order('nome'),
             supabase!.from('membros_time').select('id, nome, funcao').order('nome'),
         ])
+
         const mapped = (tarefasRes.data || []).map((t: any) => ({
             ...t,
             cliente_nome: t.clientes?.nome || '',
+            // Preenche campos texto a partir das FKs (com fallback para o texto antigo)
+            responsavel: t.responsavel_usuario?.nome || t.responsavel || '',
+            solicitante: t.solicitante_usuario?.nome || t.solicitante || '',
             clientes: undefined,
+            responsavel_usuario: undefined,
+            solicitante_usuario: undefined,
         })) as Tarefa[]
+
         setTasks(mapped)
         setClients((clientesRes.data || []) as Cliente[])
         setMembros((membrosRes.data || []) as MembroTime[])
@@ -40,7 +54,6 @@ export default function Tarefas() {
 
     useEffect(() => { fetchAll() }, [])
 
-    // Build dynamic assignees list from task data
     const assignees = useMemo(() => {
         const set = new Set<string>()
         tasks.forEach(t => { if (t.responsavel) set.add(t.responsavel) })
@@ -67,8 +80,18 @@ export default function Tarefas() {
     }
 
     const handleSaveTask = async (data: Omit<Tarefa, 'id' | 'criado_em'>) => {
-        // Remove cliente_nome — not a DB column; derive from cliente_id FK
         const { cliente_nome: _cn, ...payload } = data as any
+
+        // Se responsavel/solicitante são nomes, resolve para ID via membros
+        if (payload.responsavel && !payload.responsavel_id) {
+            const membro = membros.find(m => m.nome === payload.responsavel)
+            if (membro) payload.responsavel_id = membro.id
+        }
+        if (payload.solicitante && !payload.solicitante_id) {
+            const membro = membros.find(m => m.nome === payload.solicitante)
+            if (membro) payload.solicitante_id = membro.id
+        }
+
         if (editingTask) {
             await supabase!.from('tarefas').update(payload).eq('id', editingTask.id)
         } else {
@@ -124,33 +147,4 @@ export default function Tarefas() {
             {/* Kanban board */}
             <div className="flex-1 overflow-x-auto p-6">
                 {loading ? (
-                    <div className="flex items-center justify-center h-full text-gray-500 text-sm">Carregando tarefas...</div>
-                ) : (
-                    <div className="flex gap-4 h-full min-w-max">
-                        {COLUMNS.map(col => (
-                            <KanbanColumn
-                                key={col}
-                                title={col}
-                                tasks={getColumnTasks(col)}
-                                onAddTask={handleAddTask}
-                                onEditTask={handleEditTask}
-                            />
-                        ))}
-                    </div>
-                )}
-            </div>
-
-            {modalOpen && (
-                <TaskModal
-                    task={editingTask}
-                    clientes={clients}
-                    membros={membros}
-                    defaultStatus={defaultStatus}
-                    onSave={handleSaveTask}
-                    onDelete={editingTask ? handleDeleteTask : undefined}
-                    onClose={() => { setModalOpen(false); setEditingTask(null) }}
-                />
-            )}
-        </div>
-    )
-}
+                    <div className="flex items-center justify-center h-full text-gray-500 text-sm">Carregando tarefas.
