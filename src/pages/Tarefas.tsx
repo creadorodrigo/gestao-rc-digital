@@ -115,7 +115,7 @@ export default function Tarefas() {
     setErro(null)
     try {
       // Buscar usuários reais do banco
-      const { data: usuariosData, error: erroUsuarios } = await supabase
+      const { data: usuariosData, error: erroUsuarios } = await supabase!
         .from('usuarios')
         .select('id, nome, email, role')
         .order('nome')
@@ -124,7 +124,7 @@ export default function Tarefas() {
       setUsuarios(usuariosData ?? [])
 
       // Buscar clientes reais
-      const { data: clientesData, error: erroClientes } = await supabase
+      const { data: clientesData, error: erroClientes } = await supabase!
         .from('clientes')
         .select('id, nome')
         .eq('status', 'Ativo')
@@ -134,7 +134,7 @@ export default function Tarefas() {
       setClientes(clientesData ?? [])
 
       // Buscar tarefas com joins nas tabelas relacionadas
-      const { data: tarefasData, error: erroTarefas } = await supabase
+      const { data: tarefasData, error: erroTarefas } = await supabase!
         .from('tarefas')
         .select(`
           *,
@@ -203,7 +203,7 @@ export default function Tarefas() {
         ativa: true,
       }
 
-      const { error } = await supabase.from('tarefas').insert([payload])
+      const { error } = await supabase!.from('tarefas').insert([payload])
 
       if (error) throw new Error(error.message)
 
@@ -227,7 +227,7 @@ export default function Tarefas() {
       prev.map(t => (t.id === id ? { ...t, status: novoStatus } : t))
     )
 
-    const { error } = await supabase
+    const { error } = await supabase!
       .from('tarefas')
       .update({ status: novoStatus })
       .eq('id', id)
