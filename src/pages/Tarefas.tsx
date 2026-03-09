@@ -82,7 +82,10 @@ const NOVA_TAREFA_INICIAL: NovaT = {
 
 function isAtrasada(t: Tarefa): boolean {
   if (!t.data_vencimento || t.status === 'Concluído') return false
-  return new Date(t.data_vencimento) < new Date(new Date().toDateString())
+  // Atrasada apenas se hoje for POSTERIOR ao dia de entrega (não no mesmo dia)
+  const vencimento = new Date(t.data_vencimento + 'T00:00:00')
+  const hoje = new Date(new Date().toDateString())
+  return hoje > vencimento
 }
 
 function calcProximaExecucao(data_vencimento: string, recorrencia: 'semanal' | 'mensal'): string {
