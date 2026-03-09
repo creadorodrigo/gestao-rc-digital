@@ -191,10 +191,16 @@ export default function Reunioes() {
       if (erroSave) throw new Error(erroSave.message)
       setReuniaoAtualId(reuniao.id)
 
-      // Chama Claude
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      // Chama Claude via proxy seguro (Edge Function)
+      const { data: { session } } = await supabase!.auth.getSession()
+      const token = session?.access_token ?? ''
+      const res = await fetch('https://mtckfghzgynimptclvtd.supabase.co/functions/v1/claude-proxy', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10Y2tmZ2h6Z3luaW1wdGNsdnRkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3NjUyMzcsImV4cCI6MjA4ODM0MTIzN30.KmAd7UBD_3GTShGMK4ZQo5EszQSg1FETOfpBN65du18',
+        },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
           max_tokens: 2000,
