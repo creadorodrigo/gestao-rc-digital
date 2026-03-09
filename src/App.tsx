@@ -8,6 +8,7 @@ import Tarefas from './pages/Tarefas'
 import Clientes from './pages/Clientes'
 import Time from './pages/Time'
 import CRM from './pages/CRM'
+import Reunioes from './pages/Reunioes'
 
 function ProtectedRoute({ children, requiredRole }: { children: React.ReactNode; requiredRole?: 'admin' }) {
   const { user, loading } = useAuth()
@@ -31,19 +32,18 @@ function ProtectedRoute({ children, requiredRole }: { children: React.ReactNode;
 
 function AppRoutes() {
   const { user, loading } = useAuth()
-
   if (loading) return (
     <div className="min-h-screen bg-dark flex items-center justify-center">
       <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" />
     </div>
   )
-
   return (
     <Routes>
       <Route path="/" element={user ? <Navigate to={user.role === 'admin' ? '/dashboard' : '/tarefas'} replace /> : <Login />} />
       <Route path="/dashboard" element={<ProtectedRoute requiredRole="admin"><Dashboard /></ProtectedRoute>} />
       <Route path="/tarefas" element={<ProtectedRoute><Tarefas /></ProtectedRoute>} />
       <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
+      <Route path="/reunioes" element={<ProtectedRoute><Reunioes /></ProtectedRoute>} />
       <Route path="/time" element={<ProtectedRoute requiredRole="admin"><Time /></ProtectedRoute>} />
       <Route path="/crm" element={<ProtectedRoute requiredRole="admin"><CRM /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
