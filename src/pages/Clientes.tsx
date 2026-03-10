@@ -206,6 +206,7 @@ export default function Clientes() {
   const [filtroStatus, setFiltroStatus] = useState('')
   const [filtroResponsavel, setFiltroResponsavel] = useState('')
   const [modal, setModal] = useState<null | 'novo' | Cliente>(null)
+  const [modalVer, setModalVer] = useState<Cliente | null>(null)
   const [form, setForm] = useState<FormC>(FORM_INICIAL)
 
   const buscarTudo = useCallback(async () => {
@@ -380,7 +381,8 @@ export default function Clientes() {
                 return (
                   <div key={c.id}
                     className="rounded-xl p-4 flex items-center gap-4"
-                    style={{ background: '#141414', border: '1px solid #1E1E1E' }}>
+                    onClick={() => setModalVer(c)}
+                    style={{ background: '#141414', border: '1px solid #1E1E1E', cursor: 'pointer' }}>
                     {/* Avatar */}
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0"
                       style={{ background: '#C9A84C22', color: '#C9A84C' }}>
@@ -438,7 +440,8 @@ export default function Clientes() {
                       {lista.length === 0 && <p className="text-xs text-gray-700 text-center py-4">—</p>}
                       {lista.map(c => (
                         <div key={c.id} className="rounded-xl p-3"
-                          style={{ background: '#0F0F0F', border: '1px solid #2A2A2A' }}>
+                          onClick={() => setModalVer(c)}
+                          style={{ background: '#0F0F0F', border: '1px solid #2A2A2A', cursor: 'pointer' }}>
                           <div className="flex items-start justify-between gap-2 mb-2">
                             <p className="text-sm font-semibold text-gray-100 leading-tight">{c.nome}</p>
                             {isAdmin && (
@@ -467,6 +470,141 @@ export default function Clientes() {
             </div>
           )}
         </>
+      )}
+
+
+      {/* ══ MODAL VISUALIZAÇÃO (team) ══ */}
+      {modalVer !== null && modal === null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.8)' }}
+          onClick={e => { if (e.target === e.currentTarget) setModalVer(null) }}>
+          <div className="w-full max-w-md rounded-2xl shadow-2xl overflow-y-auto max-h-[90vh]"
+            style={{ background: '#1A1A1A', border: '1px solid #2A2A2A' }}>
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 pt-5 pb-4"
+              style={{ borderBottom: '1px solid #222' }}>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0"
+                  style={{ background: '#C9A84C22', color: '#C9A84C', fontSize: 18 }}>
+                  {modalVer.nome.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-gray-100" style={{ fontFamily: 'Nunito, sans-serif' }}>
+                    {modalVer.nome}
+                  </h2>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    {(() => { const cor = STATUS_COR[modalVer.status] ?? { bg: '#1A1A1A', text: '#888' }; return (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold"
+                        style={{ background: cor.bg, color: cor.text }}>{modalVer.status}</span>
+                    )})()}
+                    {modalVer.tipo && <span className="text-[10px] text-gray-500">{modalVer.tipo}</span>}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {isAdmin && (
+                  <button onClick={() => { setModalVer(null); abrirEdicao(modalVer) }}
+                    className="text-gray-500 hover:text-yellow-400 transition-colors text-sm px-3 py-1.5 rounded-lg"
+                    style={{ border: '1px solid #2A2A2A' }}
+                    title="Editar">✏️ Editar</button>
+                )}
+                <button onClick={() => setModalVer(null)}
+                  className="text-gray-500 hover:text-gray-300 text-xl ml-1">✕</button>
+              </div>
+            </div>
+
+            {/* Corpo */}
+            <div className="px-6 py-4 space-y-4">
+
+              {/* Site */}
+              {modalVer.site && (
+                <div>
+                  <p className="text-[10px] text-gray-600 uppercase tracking-wider font-bold mb-1">Site</p>
+                  <a href={modalVer.site.startsWith('http') ? modalVer.site : `https://${modalVer.site}`}
+                    target="_blank" rel="noopener noreferrer"
+                    className="text-sm text-blue-400 hover:underline break-all">
+                    {modalVer.site}
+                  </a>
+                </div>
+              )}
+
+              {/* Responsáveis */}
+              <div>
+                <p className="text-[10px] text-gray-600 uppercase tracking-wider font-bold mb-2">Responsáveis</p>
+                {(!modalVer.responsaveis || modalVer.responsaveis.length === 0) ? (
+                  <span className="text-sm text-gray-600">—</span>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {modalVer.responsaveis.map(id => {
+                      const u = usuarios.find(x => x.id === id)
+                      if (!u) return null
+                      return (
+                        <div key={id} className="flex items-center gap-2 px-3 py-1.5 rounded-lg"
+                          style={{ background: '#C9A84C11', border: '1px solid #C9A84C22' }}>
+                          <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                            style={{ background: '#C9A84C33', color: '#C9A84C' }}>
+                            {u.nome.charAt(0).toUpperCase()}
+                          </div>
+                          <span className="text-xs text-gray-300">{u.nome}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Plataformas de Ads */}
+              {(modalVer.conta_meta_ads || modalVer.conta_google_ads) && (
+                <div>
+                  <p className="text-[10px] text-gray-600 uppercase tracking-wider font-bold mb-2">Plataformas de Ads</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {modalVer.conta_meta_ads && (
+                      <div className="rounded-lg p-3" style={{ background: '#0F0F0F', border: '1px solid #222' }}>
+                        <p className="text-[10px] text-gray-600 mb-1">Meta Ads</p>
+                        <p className="text-xs font-mono text-gray-300">{modalVer.conta_meta_ads}</p>
+                      </div>
+                    )}
+                    {modalVer.conta_google_ads && (
+                      <div className="rounded-lg p-3" style={{ background: '#0F0F0F', border: '1px solid #222' }}>
+                        <p className="text-[10px] text-gray-600 mb-1">Google Ads</p>
+                        <p className="text-xs font-mono text-gray-300">{modalVer.conta_google_ads}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Meta */}
+              {(modalVer.investimento_mensal || modalVer.meta_faturamento || modalVer.faturado_ate_data) && (
+                <div>
+                  <p className="text-[10px] text-gray-600 uppercase tracking-wider font-bold mb-2">Meta</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {modalVer.investimento_mensal != null && (
+                      <div className="rounded-lg p-3 text-center" style={{ background: '#0F0F0F', border: '1px solid #222' }}>
+                        <p className="text-[10px] text-gray-600 mb-1">Investimento</p>
+                        <p className="text-xs font-semibold text-gray-200">{fmt(modalVer.investimento_mensal)}</p>
+                      </div>
+                    )}
+                    {modalVer.meta_faturamento != null && (
+                      <div className="rounded-lg p-3 text-center" style={{ background: '#0F0F0F', border: '1px solid #222' }}>
+                        <p className="text-[10px] text-gray-600 mb-1">Meta Fat.</p>
+                        <p className="text-xs font-semibold text-gray-200">{fmt(modalVer.meta_faturamento)}</p>
+                      </div>
+                    )}
+                    {modalVer.faturado_ate_data != null && (
+                      <div className="rounded-lg p-3 text-center" style={{ background: '#0F0F0F', border: '1px solid #222' }}>
+                        <p className="text-[10px] text-gray-600 mb-1">Faturado</p>
+                        <p className="text-xs font-semibold text-gray-200">{fmt(modalVer.faturado_ate_data)}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ══ MODAL ══ */}
