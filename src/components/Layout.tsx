@@ -1,13 +1,19 @@
 import React from 'react'
-import Sidebar from './Sidebar'
+import Sidebar, { SidebarProvider } from './Sidebar'
 
-export default function Layout({ children }: { children: React.ReactNode }) {
-    return (
-        <div className="flex min-h-screen bg-dark">
-            <Sidebar />
-            <main className="flex-1 overflow-auto">
-                {children}
-            </main>
-        </div>
-    )
+interface LayoutProps {
+  children: React.ReactNode
+}
+
+export default function Layout({ children }: LayoutProps) {
+  return (
+    <SidebarProvider>
+      <div className="flex h-screen overflow-hidden" style={{ background: '#0A0A0A' }}>
+        <Sidebar />
+        <main className="flex-1 overflow-y-auto">
+          {children}
+        </main>
+      </div>
+    </SidebarProvider>
+  )
 }
