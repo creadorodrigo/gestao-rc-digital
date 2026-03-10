@@ -16,7 +16,7 @@ interface Cliente {
 interface FormC {
   nome: string; site: string; tipo: string; status: string
   investimento_mensal: string; conta_meta_ads: string; conta_google_ads: string
-  meta_faturamento: string; contrato_mensal: string
+  meta_faturamento: string; faturado_ate_data: string; contrato_mensal: string
   vigencia_inicio: string; vigencia_fim: string; nps: string
   responsaveis: string[]   // array de UUIDs de usuários
 }
@@ -28,7 +28,7 @@ const VISUALIZACOES = ['lista', 'kanban'] as const
 const FORM_INICIAL: FormC = {
   nome: '', site: '', tipo: '', status: 'Ativo',
   investimento_mensal: '', conta_meta_ads: '', conta_google_ads: '',
-  meta_faturamento: '', contrato_mensal: '',
+  meta_faturamento: '', faturado_ate_data: '', contrato_mensal: '',
   vigencia_inicio: '', vigencia_fim: '', nps: '',
   responsaveis: [],
 }
@@ -234,6 +234,7 @@ export default function Clientes() {
       conta_meta_ads: c.conta_meta_ads ?? '',
       conta_google_ads: c.conta_google_ads ?? '',
       meta_faturamento: c.meta_faturamento?.toString() ?? '',
+      faturado_ate_data: c.faturado_ate_data?.toString() ?? '',
       contrato_mensal: c.contrato_mensal?.toString() ?? '',
       vigencia_inicio: c.vigencia_inicio ?? '',
       vigencia_fim: c.vigencia_fim ?? '',
@@ -258,6 +259,7 @@ export default function Clientes() {
         conta_meta_ads: form.conta_meta_ads || null,
         conta_google_ads: form.conta_google_ads || null,
         meta_faturamento: form.meta_faturamento ? parseFloat(form.meta_faturamento) : null,
+        faturado_ate_data: form.faturado_ate_data ? parseFloat(form.faturado_ate_data) : null,
         contrato_mensal: form.contrato_mensal ? parseFloat(form.contrato_mensal) : null,
         vigencia_inicio: form.vigencia_inicio || null,
         vigencia_fim: form.vigencia_fim || null,
@@ -484,6 +486,12 @@ export default function Clientes() {
             {erro && <div className="mb-3 p-2 rounded-lg bg-red-900/30 border border-red-700 text-red-300 text-xs">{erro}</div>}
 
             <div className="space-y-3">
+
+              {/* ── Seção: Informações Gerais ── */}
+              <div className="pb-0.5">
+                <p className="text-[10px] text-gray-600 uppercase tracking-wider font-bold">Informações Gerais</p>
+              </div>
+
               {/* Nome */}
               <div>
                 <label className="block text-xs text-gray-400 mb-1">Nome *</label>
@@ -533,7 +541,11 @@ export default function Clientes() {
                   style={{ background: '#0A0A0A', color: '#E5E5E5' }} />
               </div>
 
-              {/* Contas de Ads */}
+              {/* ── Seção: Plataformas de Ads ── */}
+              <div className="pt-2 pb-0.5" style={{ borderTop: '1px solid #1E1E1E', marginTop: 4 }}>
+                <p className="text-[10px] text-gray-600 uppercase tracking-wider font-bold">Plataformas de Ads</p>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs text-gray-400 mb-1">Conta Meta Ads</label>
@@ -551,32 +563,47 @@ export default function Clientes() {
                 </div>
               </div>
 
-              {/* Financeiro — só admin */}
+              {/* ── Seção: Meta (visível para todos) ── */}
+              <div className="pt-2 pb-0.5" style={{ borderTop: '1px solid #1E1E1E', marginTop: 4 }}>
+                <p className="text-[10px] text-gray-600 uppercase tracking-wider font-bold">Meta</p>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Investimento/mês (R$)</label>
+                  <input type="number" value={form.investimento_mensal} onChange={e => setForm(p => ({ ...p, investimento_mensal: e.target.value }))}
+                    placeholder="0,00"
+                    className="w-full px-3 py-2 rounded-lg text-sm border border-gray-700 outline-none"
+                    style={{ background: '#0A0A0A', color: '#E5E5E5' }} />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Meta faturamento (R$)</label>
+                  <input type="number" value={form.meta_faturamento} onChange={e => setForm(p => ({ ...p, meta_faturamento: e.target.value }))}
+                    placeholder="0,00"
+                    className="w-full px-3 py-2 rounded-lg text-sm border border-gray-700 outline-none"
+                    style={{ background: '#0A0A0A', color: '#E5E5E5' }} />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Faturado até (R$)</label>
+                  <input type="number" value={form.faturado_ate_data} onChange={e => setForm(p => ({ ...p, faturado_ate_data: e.target.value }))}
+                    placeholder="0,00"
+                    className="w-full px-3 py-2 rounded-lg text-sm border border-gray-700 outline-none"
+                    style={{ background: '#0A0A0A', color: '#E5E5E5' }} />
+                </div>
+              </div>
+
+              {/* ── Seção: Financeiro (só admin) ── */}
               {isAdmin && (
                 <>
-                  <div className="pt-1 pb-0.5">
-                    <p className="text-[10px] text-gray-600 uppercase tracking-wider font-bold">Financeiro</p>
+                  <div className="pt-2 pb-0.5" style={{ borderTop: '1px solid #C9A84C44', marginTop: 4 }}>
+                    <p className="text-[10px] uppercase tracking-wider font-bold" style={{ color: '#C9A84C88' }}>
+                      🔒 Financeiro
+                    </p>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1">Investimento/mês (R$)</label>
-                      <input type="number" value={form.investimento_mensal} onChange={e => setForm(p => ({ ...p, investimento_mensal: e.target.value }))}
-                        placeholder="0,00"
-                        className="w-full px-3 py-2 rounded-lg text-sm border border-gray-700 outline-none"
-                        style={{ background: '#0A0A0A', color: '#E5E5E5' }} />
-                    </div>
                     <div>
                       <label className="block text-xs text-gray-400 mb-1">Contrato/mês (R$)</label>
                       <input type="number" value={form.contrato_mensal} onChange={e => setForm(p => ({ ...p, contrato_mensal: e.target.value }))}
-                        placeholder="0,00"
-                        className="w-full px-3 py-2 rounded-lg text-sm border border-gray-700 outline-none"
-                        style={{ background: '#0A0A0A', color: '#E5E5E5' }} />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1">Meta faturamento (R$)</label>
-                      <input type="number" value={form.meta_faturamento} onChange={e => setForm(p => ({ ...p, meta_faturamento: e.target.value }))}
                         placeholder="0,00"
                         className="w-full px-3 py-2 rounded-lg text-sm border border-gray-700 outline-none"
                         style={{ background: '#0A0A0A', color: '#E5E5E5' }} />
