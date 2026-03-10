@@ -25,7 +25,10 @@ interface FormT {
   data_vencimento: string; recorrencia: 'não' | 'semanal' | 'mensal'
 }
 
+type Visualizacao = 'kanban' | 'calendario'
+
 const COLUNAS: Tarefa['status'][] = ['A Fazer', 'Em Andamento', 'Em Revisão', 'Concluído']
+const DIAS_SEMANA = ['seg', 'ter', 'qua', 'qui', 'sex', 'sáb', 'dom']
 
 const PRIORIDADE_COR: Record<string, string> = {
   baixa: 'border-l-4 border-green-500', média: 'border-l-4 border-yellow-400',
@@ -34,6 +37,9 @@ const PRIORIDADE_COR: Record<string, string> = {
 const PRIORIDADE_BADGE: Record<string, string> = {
   baixa: 'bg-green-900/40 text-green-300', média: 'bg-yellow-900/40 text-yellow-300',
   alta: 'bg-orange-900/40 text-orange-300', urgente: 'bg-red-900/40 text-red-300',
+}
+const PRIORIDADE_BORDA: Record<string, string> = {
+  baixa: '#22c55e', média: '#eab308', alta: '#f97316', urgente: '#ef4444',
 }
 
 const FORM_INICIAL: FormT = {
@@ -52,6 +58,25 @@ function calcProxima(data: string, rec: 'semanal' | 'mensal'): string {
   return d.toISOString().split('T')[0]
 }
 
+function inicioSemana(ref: Date): Date {
+  const d = new Date(ref)
+  const dia = d.getDay()
+  const diff = dia === 0 ? -6 : 1 - dia
+  d.setDate(d.getDate() + diff)
+  d.setHours(0, 0, 0, 0)
+  return d
+}
+
+function addDias(d: Date, n: number): Date {
+  const r = new Date(d)
+  r.setDate(r.getDate() + n)
+  return r
+}
+
+function toDateStr(d: Date): string {
+  return d.toISOString().split('T')[0]
+}
+
 export default function Tarefas() {
   const [tarefas, setTarefas] = useState<Tarefa[]>([])
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
@@ -60,7 +85,8 @@ export default function Tarefas() {
   const [erro, setErro] = useState<string | null>(null)
   const [salvando, setSalvando] = useState(false)
   const [filtroResponsavel, setFiltroResponsavel] = useState('')
-  // modal: null=fechado | 'novo'=criando | Tarefa=editando
+  const [visualizacao, setVisualizacao] = useState<Visualizacao>('kanban')
+  const [semanaRef, setSemanaRef] = useState<Date>(() => inicioSemana(new Date()))
   const [modal, setModal] = useState<null | 'novo' | Tarefa>(null)
   const [form, setForm] = useState<FormT>(FORM_INICIAL)
 
@@ -161,6 +187,21 @@ export default function Tarefas() {
   const porColuna = (s: Tarefa['status']) => filtradas.filter(t => t.status === s)
   const isEdicao = modal !== null && modal !== 'novo'
 
+  // Calendário
+  const diasSemana = Array.from({ length: 7 }, (_, i) => addDias(semanaRef, i))
+  const hoje = toDateStr(new Date())
+  const tarefasDia = (dia: Date) => filtradas.filter(t => t.data_vencimento === toDateStr(dia))
+  const tarefasSemData = filtradas.filter(t => !t.data_vencimento)
+
+  const labelSemana = () => {
+    const ini = diasSemana[0]
+    const fim = diasSemana[6]
+    const mesIni = ini.toLocaleDateString('pt-BR', { month: 'long' })
+    const mesFim = fim.toLocaleDateString('pt-BR', { month: 'long' })
+    const ano = fim.getFullYear()
+    return mesIni === mesFim ? `${mesIni} de ${ano}` : `${mesIni} – ${mesFim} de ${ano}`
+  }
+
   return (
     <div className="p-6 min-h-screen" style={{ background: '#0A0A0A', color: '#E5E5E5' }}>
 
@@ -170,11 +211,34 @@ export default function Tarefas() {
           <h1 className="text-2xl font-bold" style={{ color: '#C9A84C', fontFamily: 'Nunito, sans-serif' }}>Tarefas</h1>
           <p className="text-sm text-gray-400 mt-1">{tarefas.length} tarefa{tarefas.length !== 1 ? 's' : ''} ativas</p>
         </div>
-        <button onClick={abrirNovo}
-          className="px-4 py-2 rounded-lg font-semibold text-sm hover:opacity-80 transition-opacity"
-          style={{ background: '#C9A84C', color: '#0A0A0A' }}>
-          + Nova Tarefa
-        </button>
+        <div className="flex items-center gap-3">
+          {/* Toggle visualização */}
+          <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid #2A2A2A' }}>
+            <button
+              onClick={() => setVisualizacao('kanban')}
+              style={{
+                padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none',
+                background: visualizacao === 'kanban' ? '#C9A84C' : '#141414',
+                color: visualizacao === 'kanban' ? '#0A0A0A' : '#666',
+                transition: 'all 0.15s', fontFamily: 'Nunito, sans-serif',
+              }}
+            >⬛ Kanban</button>
+            <button
+              onClick={() => setVisualizacao('calendario')}
+              style={{
+                padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none',
+                background: visualizacao === 'calendario' ? '#C9A84C' : '#141414',
+                color: visualizacao === 'calendario' ? '#0A0A0A' : '#666',
+                transition: 'all 0.15s', fontFamily: 'Nunito, sans-serif',
+              }}
+            >📅 Calendário</button>
+          </div>
+          <button onClick={abrirNovo}
+            className="px-4 py-2 rounded-lg font-semibold text-sm hover:opacity-80 transition-opacity"
+            style={{ background: '#C9A84C', color: '#0A0A0A' }}>
+            + Nova Tarefa
+          </button>
+        </div>
       </div>
 
       {/* Filtro responsável */}
@@ -200,26 +264,185 @@ export default function Tarefas() {
           <div className="w-8 h-8 border-2 rounded-full animate-spin" style={{ borderColor: '#C9A84C', borderTopColor: 'transparent' }} />
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-          {COLUNAS.map(col => (
-            <div key={col} className="rounded-xl p-3" style={{ background: '#141414' }}>
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold text-sm" style={{ color: '#C9A84C' }}>{col}</h2>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">{porColuna(col).length}</span>
+        <>
+          {/* ══ KANBAN ══════════════════════════════════════════════════════ */}
+          {visualizacao === 'kanban' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+              {COLUNAS.map(col => (
+                <div key={col} className="rounded-xl p-3" style={{ background: '#141414' }}>
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="font-semibold text-sm" style={{ color: '#C9A84C' }}>{col}</h2>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">{porColuna(col).length}</span>
+                  </div>
+                  <div className="space-y-2 min-h-[80px]">
+                    {porColuna(col).length === 0 && <p className="text-xs text-gray-600 text-center py-4">Nenhuma tarefa</p>}
+                    {porColuna(col).map(t => (
+                      <TarefaCard key={t.id} tarefa={t} colunas={COLUNAS}
+                        onMover={moverTarefa} onEditar={abrirEdicao} onExcluir={handleExcluir} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ══ CALENDÁRIO SEMANAL ═════════════════════════════════════════ */}
+          {visualizacao === 'calendario' && (
+            <div>
+              {/* Navegação */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setSemanaRef(d => addDias(d, -7))}
+                    style={{ background: '#141414', border: '1px solid #2A2A2A', color: '#888', borderRadius: 8, width: 32, height: 32, cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>
+                    ‹
+                  </button>
+                  <button
+                    onClick={() => setSemanaRef(d => addDias(d, 7))}
+                    style={{ background: '#141414', border: '1px solid #2A2A2A', color: '#888', borderRadius: 8, width: 32, height: 32, cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>
+                    ›
+                  </button>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: '#E5E5E5', textTransform: 'capitalize', fontFamily: 'Nunito, sans-serif' }}>
+                    {labelSemana()}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setSemanaRef(inicioSemana(new Date()))}
+                  style={{ padding: '5px 14px', borderRadius: 8, border: '1px solid #2A2A2A', background: '#141414', color: '#C9A84C', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'Nunito, sans-serif' }}>
+                  Hoje
+                </button>
               </div>
-              <div className="space-y-2 min-h-[80px]">
-                {porColuna(col).length === 0 && <p className="text-xs text-gray-600 text-center py-4">Nenhuma tarefa</p>}
-                {porColuna(col).map(t => (
-                  <TarefaCard key={t.id} tarefa={t} colunas={COLUNAS}
-                    onMover={moverTarefa} onEditar={abrirEdicao} onExcluir={handleExcluir} />
+
+              {/* Faixa sem data */}
+              {tarefasSemData.length > 0 && (
+                <div style={{ background: '#141414', border: '1px solid #1E1E1E', borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
+                  <p style={{ fontSize: 11, color: '#555', fontWeight: 700, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 }}>
+                    Sem data ({tarefasSemData.length})
+                  </p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {tarefasSemData.map(t => (
+                      <button key={t.id} onClick={() => abrirEdicao(t)}
+                        style={{
+                          background: '#0F0F0F',
+                          border: '1px solid #2A2A2A',
+                          borderLeft: `3px solid ${PRIORIDADE_BORDA[t.prioridade] ?? '#555'}`,
+                          borderRadius: 6, padding: '4px 10px', cursor: 'pointer',
+                          fontSize: 11, color: '#C0C0C0', fontFamily: 'Nunito, sans-serif',
+                        }}>
+                        {t.titulo}
+                        {t.clientes && <span style={{ color: '#555', marginLeft: 6 }}>{t.clientes.nome}</span>}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Grid 7 dias */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8 }}>
+                {diasSemana.map((dia, i) => {
+                  const isHoje = toDateStr(dia) === hoje
+                  const lista = tarefasDia(dia)
+                  return (
+                    <div key={i} style={{
+                      background: '#141414',
+                      border: `1px solid ${isHoje ? '#C9A84C55' : '#1E1E1E'}`,
+                      borderRadius: 10, minHeight: 160, overflow: 'hidden',
+                    }}>
+                      {/* Cabeçalho do dia */}
+                      <div style={{
+                        padding: '8px 10px', borderBottom: '1px solid #1E1E1E',
+                        background: isHoje ? '#C9A84C0D' : 'transparent',
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      }}>
+                        <span style={{ fontSize: 10, color: '#555', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                          {DIAS_SEMANA[i]}
+                        </span>
+                        <span style={{
+                          fontSize: 13, fontWeight: 700,
+                          color: isHoje ? '#C9A84C' : '#E5E5E5',
+                          background: isHoje ? '#C9A84C22' : 'transparent',
+                          borderRadius: '50%', width: 26, height: 26,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                          {dia.getDate()}
+                        </span>
+                      </div>
+
+                      {/* Cards do dia */}
+                      <div style={{ padding: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {lista.length === 0 && (
+                          <p style={{ fontSize: 10, color: '#2A2A2A', textAlign: 'center', padding: '14px 0' }}>—</p>
+                        )}
+                        {lista.map(t => {
+                          const atrasada = isAtrasada(t)
+                          return (
+                            <button key={t.id} onClick={() => abrirEdicao(t)}
+                              style={{
+                                background: '#0F0F0F', border: '1px solid #2A2A2A',
+                                borderLeft: `3px solid ${PRIORIDADE_BORDA[t.prioridade] ?? '#555'}`,
+                                borderRadius: 6, padding: '5px 7px',
+                                cursor: 'pointer', textAlign: 'left', width: '100%',
+                              }}>
+                              <p style={{
+                                fontSize: 11, fontWeight: 600, margin: 0, lineHeight: 1.3,
+                                color: atrasada ? '#ef4444' : '#D0D0D0',
+                                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                                fontFamily: 'Nunito, sans-serif',
+                              }}>
+                                {atrasada ? '⚠ ' : ''}{t.titulo}
+                              </p>
+                              {t.clientes?.nome && (
+                                <p style={{ fontSize: 10, color: '#555', margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  {t.clientes.nome}
+                                </p>
+                              )}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3 }}>
+                                <span style={{
+                                  fontSize: 9, padding: '1px 5px', borderRadius: 20, fontWeight: 700,
+                                  background: (PRIORIDADE_BORDA[t.prioridade] ?? '#888') + '22',
+                                  color: PRIORIDADE_BORDA[t.prioridade] ?? '#888',
+                                }}>
+                                  {t.prioridade}
+                                </span>
+                                {t.status === 'Concluído' && <span style={{ fontSize: 10, color: '#22c55e' }}>✓</span>}
+                                {t.recorrencia !== 'não' && <span style={{ fontSize: 10, color: '#C9A84C' }}>↻</span>}
+                              </div>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Legenda */}
+              <div style={{ display: 'flex', gap: 16, marginTop: 14, flexWrap: 'wrap' }}>
+                {Object.entries(PRIORIDADE_BORDA).map(([k, v]) => (
+                  <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <div style={{ width: 10, height: 10, borderRadius: 2, background: v }} />
+                    <span style={{ fontSize: 11, color: '#555', textTransform: 'capitalize' }}>{k}</span>
+                  </div>
                 ))}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ fontSize: 11, color: '#ef4444' }}>⚠</span>
+                  <span style={{ fontSize: 11, color: '#555' }}>Atrasada</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ fontSize: 11, color: '#22c55e' }}>✓</span>
+                  <span style={{ fontSize: 11, color: '#555' }}>Concluída</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ fontSize: 11, color: '#C9A84C' }}>↻</span>
+                  <span style={{ fontSize: 11, color: '#555' }}>Recorrente</span>
+                </div>
               </div>
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
 
-      {/* Modal */}
+      {/* ══ MODAL CRIAR / EDITAR ══════════════════════════════════════════ */}
       {modal !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: 'rgba(0,0,0,0.75)' }}
@@ -237,7 +460,6 @@ export default function Tarefas() {
             {erro && <div className="mb-3 p-2 rounded-lg bg-red-900/30 border border-red-700 text-red-300 text-xs">{erro}</div>}
 
             <div className="space-y-3">
-              {/* Título */}
               <div>
                 <label className="block text-xs text-gray-400 mb-1">Título *</label>
                 <input value={form.titulo} onChange={e => setForm(p => ({ ...p, titulo: e.target.value }))}
@@ -246,7 +468,6 @@ export default function Tarefas() {
                   style={{ background: '#0A0A0A', color: '#E5E5E5' }} />
               </div>
 
-              {/* Descrição */}
               <div>
                 <label className="block text-xs text-gray-400 mb-1">Descrição</label>
                 <textarea value={form.descricao} onChange={e => setForm(p => ({ ...p, descricao: e.target.value }))}
@@ -255,7 +476,6 @@ export default function Tarefas() {
                   style={{ background: '#0A0A0A', color: '#E5E5E5' }} />
               </div>
 
-              {/* Cliente */}
               <div>
                 <label className="block text-xs text-gray-400 mb-1">Cliente</label>
                 <select value={form.cliente_id} onChange={e => setForm(p => ({ ...p, cliente_id: e.target.value }))}
@@ -266,7 +486,6 @@ export default function Tarefas() {
                 </select>
               </div>
 
-              {/* Solicitante + Responsável */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs text-gray-400 mb-1">Solicitante</label>
@@ -288,7 +507,6 @@ export default function Tarefas() {
                 </div>
               </div>
 
-              {/* Prioridade + Status */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs text-gray-400 mb-1">Prioridade</label>
@@ -311,7 +529,6 @@ export default function Tarefas() {
                 </div>
               </div>
 
-              {/* Data + Recorrência */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs text-gray-400 mb-1">Data de entrega</label>
@@ -344,7 +561,6 @@ export default function Tarefas() {
               )}
             </div>
 
-            {/* Botões */}
             <div className="flex justify-between items-center mt-5">
               {isEdicao ? (
                 <button onClick={() => handleExcluir((modal as Tarefa).id)}
@@ -369,7 +585,7 @@ export default function Tarefas() {
   )
 }
 
-// ─── Card ─────────────────────────────────────────────────────────────────────
+// ── Card Kanban ────────────────────────────────────────────────────────────────
 
 interface CardProps {
   tarefa: Tarefa; colunas: Tarefa['status'][]
