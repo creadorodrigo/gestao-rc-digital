@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { LayoutDashboard, CheckSquare, UserCheck, TrendingUp, LogOut, Building2, NotebookPen, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
@@ -67,13 +67,18 @@ export default function Sidebar() {
       }}
       className="bg-dark-200 border-r border-dark-500 flex flex-col h-screen sticky top-0"
     >
-      {/* Logo + botão minimizar */}
-      <div className="p-3 border-b border-dark-500 flex items-center gap-2" style={{ minHeight: 64 }}>
-        {/* Logo RC */}
-        <div
-          className="w-9 h-9 bg-dark-400 border border-gold/40 rounded-lg flex items-center justify-center rotate-45 flex-shrink-0"
-          style={{ marginLeft: collapsed ? 4 : 2 }}
-        >
+      {/* Header: logo + botão toggle — sempre visível */}
+      <div
+        className="border-b border-dark-500 flex items-center"
+        style={{
+          minHeight: 64,
+          padding: collapsed ? '0 12px' : '0 12px 0 16px',
+          justifyContent: collapsed ? 'center' : 'space-between',
+          gap: 8,
+        }}
+      >
+        {/* Logo RC — sempre visível */}
+        <div className="w-9 h-9 bg-dark-400 border border-gold/40 rounded-lg flex items-center justify-center rotate-45 flex-shrink-0">
           <span className="font-bold text-gold text-sm -rotate-45" style={{ fontFamily: 'Nunito' }}>RC</span>
         </div>
 
@@ -85,16 +90,15 @@ export default function Sidebar() {
           </div>
         )}
 
-        {/* Botão toggle */}
+        {/* Botão toggle — SEMPRE visível */}
         <button
           onClick={() => setCollapsed(!collapsed)}
           title={collapsed ? 'Expandir menu' : 'Minimizar menu'}
-          className="flex-shrink-0 text-gray-500 hover:text-gold transition-colors rounded-lg p-1 hover:bg-dark-400"
-          style={{ marginLeft: collapsed ? 'auto' : undefined }}
+          className="flex-shrink-0 text-gray-500 hover:text-gold transition-colors rounded-lg p-1.5 hover:bg-dark-400"
         >
           {collapsed
-            ? <PanelLeftOpen size={16} />
-            : <PanelLeftClose size={16} />
+            ? <PanelLeftOpen size={15} />
+            : <PanelLeftClose size={15} />
           }
         </button>
       </div>
@@ -107,7 +111,7 @@ export default function Sidebar() {
             to={to}
             title={collapsed ? label : undefined}
             className={({ isActive }) => isActive ? 'nav-item-active' : 'nav-item-inactive'}
-            style={{ justifyContent: collapsed ? 'center' : undefined }}
+            style={{ justifyContent: collapsed ? 'center' : undefined, padding: collapsed ? '8px' : undefined }}
           >
             <Icon size={16} className="flex-shrink-0" />
             {!collapsed && <span>{label}</span>}
@@ -134,7 +138,10 @@ export default function Sidebar() {
           </div>
         ) : (
           <div className="flex justify-center mb-2">
-            <div className="w-8 h-8 bg-gold/20 rounded-full flex items-center justify-center" title={user?.nome}>
+            <div
+              className="w-8 h-8 bg-gold/20 rounded-full flex items-center justify-center"
+              title={user?.nome}
+            >
               <span className="text-gold font-bold text-xs">
                 {user?.nome?.charAt(0).toUpperCase() || 'U'}
               </span>
