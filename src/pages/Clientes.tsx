@@ -22,7 +22,7 @@ interface FormC {
 }
 
 const TIPOS = ['E-commerce', 'Negócio Local', 'Mercado', 'Indústria']
-const STATUS_OPTS = ['Ativo', 'Pausado', 'Inativo', 'Prospect']
+const STATUS_OPTS = ['Ativo', 'Pausado', 'Inativo', 'Prospectando']
 const VISUALIZACOES = ['lista', 'kanban'] as const
 
 const FORM_INICIAL: FormC = {
@@ -37,7 +37,7 @@ const STATUS_COR: Record<string, { bg: string; text: string }> = {
   Ativo:    { bg: '#0d2b0d', text: '#4ade80' },
   Pausado:  { bg: '#2b220d', text: '#fbbf24' },
   Inativo:  { bg: '#2b0d0d', text: '#f87171' },
-  Prospect: { bg: '#0d1a2b', text: '#60a5fa' },
+  Prospectando: { bg: '#0d1a2b', text: '#60a5fa' },
 }
 
 function fmt(v: number | null, prefix = 'R$') {
