@@ -1,6 +1,6 @@
 import React from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, CheckSquare, UserCheck, TrendingUp, LogOut, Building2 } from 'lucide-react'
+import { LayoutDashboard, CheckSquare, UserCheck, TrendingUp, LogOut, Building2, NotebookPen } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 
 export default function Sidebar() {
@@ -15,6 +15,7 @@ export default function Sidebar() {
     const navItems = [
         { to: '/tarefas', icon: CheckSquare, label: 'Tarefas', adminOnly: false },
         { to: '/clientes', icon: Building2, label: 'Clientes', adminOnly: false },
+        { to: '/reunioes', icon: NotebookPen, label: 'Reuniões', adminOnly: false },
         { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', adminOnly: true },
         { to: '/time', icon: UserCheck, label: 'Time', adminOnly: true },
         { to: '/crm', icon: TrendingUp, label: 'CRM', adminOnly: true },
