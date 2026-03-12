@@ -21,9 +21,9 @@ const SUGESTOES = [
   "Quais campanhas devo pausar ou escalar?",
   "Relatório das campanhas de semana do consumidor",
   "Análise de custo por conversão dos últimos 14 dias",
-]
+] as const
 
-const STATUS_CORES = {
+const STATUS_CORES: Record<string, string> = {
   bom: "#22c55e",
   neutro: "#eab308",
   ruim: "#ef4444",
@@ -31,30 +31,88 @@ const STATUS_CORES = {
   medio: "#f97316",
 }
 
-const AVALIACAO_BADGE = {
+const AVALIACAO_BADGE: Record<
+  string,
+  { bg: string; color: string; label: string }
+> = {
   excelente: { bg: "#C9A84C22", color: "#C9A84C", label: "Excelente" },
   bom: { bg: "#22c55e22", color: "#22c55e", label: "Bom" },
   medio: { bg: "#f9731622", color: "#f97316", label: "Médio" },
   ruim: { bg: "#ef444422", color: "#ef4444", label: "Ruim" },
 }
 
+type Cliente = {
+  id: string | number
+  nome: string
+  conta_meta_ads: string | null
+  status: string | null
+}
+
+type HistoricoItem = {
+  comando: string
+  cliente: string
+  timestamp: Date
+}
+
+type Campanha = {
+  nome?: string
+  spend?: string
+  roas?: string
+  ctr?: string
+  cpc?: string
+  compras?: number | string | null
+  status?: string
+  avaliacao?: string
+}
+
+type MetricaPrincipal = {
+  label: string
+  valor: string
+  variacao?: string
+  status?: string
+}
+
+type Relatorio = {
+  titulo?: string
+  periodo?: string
+  resumo_executivo?: string
+  metricas_principais?: MetricaPrincipal[]
+  campanhas?: Campanha[]
+  analise_detalhada?: string
+  recomendacoes?: string[]
+}
+
+type RelatorioResponse = {
+  success?: boolean
+  error?: string
+  details?: string
+  relatorio?: Relatorio
+}
+
 export default function RelatoriosIA() {
-  const [clientes, setClientes] = useState([])
-  const [clienteSelecionado, setClienteSelecionado] = useState(null)
+  const [clientes, setClientes] = useState<Cliente[]>([])
+  const [clienteSelecionado, setClienteSelecionado] = useState<Cliente | null>(
+    null,
+  )
   const [comando, setComando] = useState("")
   const [carregando, setCarregando] = useState(false)
   const [carregandoClientes, setCarregandoClientes] = useState(true)
-  const [relatorio, setRelatorio] = useState(null)
-  const [erro, setErro] = useState(null)
+  const [relatorio, setRelatorio] = useState<Relatorio | null>(null)
+  const [erro, setErro] = useState<string | null>(null)
   const [progresso, setProgresso] = useState("")
-  const [historico, setHistorico] = useState([])
-  const resultadoRef = useRef(null)
-  const inputRef = useRef(null)
+  const [historico, setHistorico] = useState<HistoricoItem[]>([])
 
-  // Buscar clientes do Supabase que tenham conta Meta
+  const resultadoRef = useRef<HTMLDivElement | null>(null)
+  const inputRef = useRef<HTMLTextAreaElement | null>(null)
+
   useEffect(() => {
+    let ativo = true
+
     async function carregarClientes() {
       try {
+        setCarregandoClientes(true)
+        setErro(null)
+
         const res = await fetch(
           `${SUPABASE_URL}/rest/v1/clientes?select=id,nome,conta_meta_ads,status&conta_meta_ads=not.is.null&order=nome`,
           {
@@ -64,71 +122,115 @@ export default function RelatoriosIA() {
             },
           },
         )
-        const data = await res.json()
-        setClientes(data || [])
-        if (data?.length > 0) setClienteSelecionado(data[0])
-      } catch {
-        setErro("Erro ao carregar clientes")
+
+        if (!res.ok) {
+          const textoErro = await res.text()
+          throw new Error(
+            `Erro HTTP ${res.status}${textoErro ? `: ${textoErro}` : ""}`,
+          )
+        }
+
+        const data: unknown = await res.json()
+
+        if (!ativo) return
+
+        if (Array.isArray(data)) {
+          const clientesValidos = data.filter(
+            (item): item is Cliente =>
+              !!item &&
+              typeof item === "object" &&
+              "id" in item &&
+              "nome" in item,
+          )
+
+          setClientes(clientesValidos)
+
+          setClienteSelecionado((prev) => {
+            if (
+              prev &&
+              clientesValidos.some((cliente) => cliente.id === prev.id)
+            ) {
+              return prev
+            }
+            return clientesValidos.length > 0 ? clientesValidos[0] : null
+          })
+        } else {
+          console.error("Resposta inesperada ao carregar clientes:", data)
+          setClientes([])
+          setClienteSelecionado(null)
+          setErro("Resposta inesperada ao carregar clientes")
+        }
+      } catch (err) {
+        if (!ativo) return
+        console.error("Erro ao carregar clientes:", err)
+        setClientes([])
+        setClienteSelecionado(null)
+        setErro(
+          err instanceof Error ? err.message : "Erro ao carregar clientes",
+        )
       } finally {
-        setCarregandoClientes(false)
+        if (ativo) {
+          setCarregandoClientes(false)
+        }
       }
     }
+
     carregarClientes()
+
+    return () => {
+      ativo = false
+    }
   }, [])
 
   async function gerarRelatorio() {
     if (!clienteSelecionado || !comando.trim()) return
+
     setCarregando(true)
     setErro(null)
     setRelatorio(null)
     setProgresso("Conectando ao Meta Ads via MCP...")
 
     const timers = [
-      setTimeout(
+      window.setTimeout(
         () => setProgresso("Haiku está buscando dados das campanhas..."),
         3000,
       ),
-      setTimeout(
+      window.setTimeout(
         () => setProgresso("Dados coletados. Sonnet está analisando..."),
         10000,
       ),
-      setTimeout(
+      window.setTimeout(
         () => setProgresso("Gerando insights e recomendações..."),
         18000,
       ),
-      setTimeout(
+      window.setTimeout(
         () => setProgresso("Quase pronto, finalizando o relatório..."),
         25000,
       ),
     ]
 
     try {
-      const res = await fetch(
-        `${SUPABASE_URL}/functions/v1/relatorios-ia`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: SUPABASE_KEY,
-            Authorization: `Bearer ${SUPABASE_KEY}`,
-          },
-          body: JSON.stringify({
-            account_id: clienteSelecionado.conta_meta_ads,
-            cliente_nome: clienteSelecionado.nome,
-            comando: comando.trim(),
-          }),
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/relatorios-ia`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${SUPABASE_KEY}`,
         },
-      )
+        body: JSON.stringify({
+          account_id: clienteSelecionado.conta_meta_ads,
+          cliente_nome: clienteSelecionado.nome,
+          comando: comando.trim(),
+        }),
+      })
 
-      timers.forEach(clearTimeout)
-
-      const data = await res.json()
+      const data: RelatorioResponse = await res.json()
 
       if (!res.ok || !data.success) {
         throw new Error(data.error || data.details || "Erro ao gerar relatório")
       }
 
-      setRelatorio(data.relatorio)
+      setRelatorio(data.relatorio || null)
       setHistorico((prev) => [
         {
           comando: comando.trim(),
@@ -138,38 +240,35 @@ export default function RelatoriosIA() {
         ...prev.slice(0, 9),
       ])
 
-      setTimeout(() => {
+      window.setTimeout(() => {
         resultadoRef.current?.scrollIntoView({ behavior: "smooth" })
       }, 200)
     } catch (err) {
-      setErro(err.message || "Erro desconhecido")
+      console.error("Erro ao gerar relatório:", err)
+      setErro(err instanceof Error ? err.message : "Erro desconhecido")
     } finally {
-      timers.forEach(clearTimeout)
+      timers.forEach((timer) => clearTimeout(timer))
       setCarregando(false)
       setProgresso("")
     }
   }
 
-  function handleKeyDown(e) {
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) gerarRelatorio()
   }
 
-  function usarSugestao(sug) {
+  function usarSugestao(sug: string) {
     setComando(sug)
     inputRef.current?.focus()
   }
 
-  // Dados para gráfico
   const dadosGraficoCampanhas =
     relatorio?.campanhas?.map((c) => ({
-      nome:
-        c.nome?.length > 25 ? c.nome.substring(0, 25) + "..." : c.nome,
+      nome: c.nome?.length && c.nome.length > 25 ? `${c.nome.substring(0, 25)}...` : (c.nome ?? "Sem nome"),
       spend:
-        parseFloat(
-          c.spend?.replace(/[R$\s.]/g, "").replace(",", "."),
-        ) || 0,
-      roas:
-        parseFloat(c.roas?.replace("x", "").replace(",", ".")) || 0,
+        parseFloat(c.spend?.replace(/[R$\s.]/g, "").replace(",", ".") || "0") ||
+        0,
+      roas: parseFloat(c.roas?.replace("x", "").replace(",", ".") || "0") || 0,
     })) || []
 
   return (
@@ -181,7 +280,6 @@ export default function RelatoriosIA() {
         fontFamily: "'Nunito', sans-serif",
       }}
     >
-      {/* Header */}
       <div
         style={{
           padding: "20px 24px 16px",
@@ -224,7 +322,6 @@ export default function RelatoriosIA() {
       </div>
 
       <div style={{ padding: "20px 24px", maxWidth: 960, margin: "0 auto" }}>
-        {/* Painel de Configuração */}
         <div
           style={{
             background: "#0F0F0F",
@@ -234,7 +331,6 @@ export default function RelatoriosIA() {
             marginBottom: 20,
           }}
         >
-          {/* Seletor de Cliente */}
           <div style={{ marginBottom: 16 }}>
             <label
               style={{
@@ -247,6 +343,7 @@ export default function RelatoriosIA() {
             >
               CLIENTE
             </label>
+
             {carregandoClientes ? (
               <div
                 style={{
@@ -255,10 +352,23 @@ export default function RelatoriosIA() {
                   border: "1px solid #1E1E1E",
                   borderRadius: 8,
                   fontSize: 13,
-                  color: "#444",
+                  color: "#888",
                 }}
               >
                 Carregando clientes...
+              </div>
+            ) : clientes.length === 0 ? (
+              <div
+                style={{
+                  padding: "10px 14px",
+                  background: "#141414",
+                  border: "1px solid #1E1E1E",
+                  borderRadius: 8,
+                  fontSize: 13,
+                  color: "#888",
+                }}
+              >
+                Nenhum cliente com conta Meta Ads foi encontrado.
               </div>
             ) : (
               <div
@@ -276,18 +386,14 @@ export default function RelatoriosIA() {
                       padding: "8px 14px",
                       borderRadius: 8,
                       border: `1px solid ${
-                        clienteSelecionado?.id === c.id
-                          ? "#C9A84C"
-                          : "#1E1E1E"
+                        clienteSelecionado?.id === c.id ? "#C9A84C" : "#1E1E1E"
                       }`,
                       background:
                         clienteSelecionado?.id === c.id
                           ? "#C9A84C15"
                           : "#141414",
                       color:
-                        clienteSelecionado?.id === c.id
-                          ? "#C9A84C"
-                          : "#888",
+                        clienteSelecionado?.id === c.id ? "#C9A84C" : "#888",
                       fontSize: 12,
                       fontWeight: 600,
                       cursor: "pointer",
@@ -303,8 +409,7 @@ export default function RelatoriosIA() {
                         width: 6,
                         height: 6,
                         borderRadius: "50%",
-                        background:
-                          c.status === "Ativo" ? "#22c55e" : "#eab308",
+                        background: c.status === "Ativo" ? "#22c55e" : "#eab308",
                         flexShrink: 0,
                       }}
                     />
@@ -315,7 +420,6 @@ export default function RelatoriosIA() {
             )}
           </div>
 
-          {/* Campo de Comando */}
           <div style={{ marginBottom: 12 }}>
             <label
               style={{
@@ -393,7 +497,6 @@ export default function RelatoriosIA() {
             </p>
           </div>
 
-          {/* Sugestões rápidas */}
           <div>
             <label
               style={{
@@ -447,7 +550,6 @@ export default function RelatoriosIA() {
           </div>
         </div>
 
-        {/* Loading State */}
         {carregando && (
           <div
             style={{
@@ -531,7 +633,6 @@ export default function RelatoriosIA() {
           </div>
         )}
 
-        {/* Erro */}
         {erro && (
           <div
             style={{
@@ -550,7 +651,7 @@ export default function RelatoriosIA() {
                 fontWeight: 700,
               }}
             >
-              ❌ Erro ao gerar relatório
+              ❌ Erro
             </p>
             <p
               style={{
@@ -564,14 +665,11 @@ export default function RelatoriosIA() {
           </div>
         )}
 
-        {/* ═══════════ RELATÓRIO ═══════════ */}
         {relatorio && (
           <div ref={resultadoRef}>
-            {/* Título */}
             <div
               style={{
-                background:
-                  "linear-gradient(135deg, #141414 0%, #0F0F0F 100%)",
+                background: "linear-gradient(135deg, #141414 0%, #0F0F0F 100%)",
                 border: "1px solid #C9A84C44",
                 borderRadius: 14,
                 padding: 24,
@@ -637,6 +735,7 @@ export default function RelatoriosIA() {
                   </span>
                 </div>
               </div>
+
               {relatorio.resumo_executivo && (
                 <p
                   style={{
@@ -655,74 +754,70 @@ export default function RelatoriosIA() {
               )}
             </div>
 
-            {/* Métricas Principais */}
-            {relatorio.metricas_principais?.length > 0 && (
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns:
-                    "repeat(auto-fit, minmax(180px, 1fr))",
-                  gap: 12,
-                  marginBottom: 16,
-                }}
-              >
-                {relatorio.metricas_principais.map((m, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      background: "#0F0F0F",
-                      border: "1px solid #1E1E1E",
-                      borderRadius: 12,
-                      padding: "16px 18px",
-                      borderTop: `2px solid ${
-                        STATUS_CORES[m.status] || "#1E1E1E"
-                      }`,
-                    }}
-                  >
-                    <p
+            {relatorio.metricas_principais &&
+              relatorio.metricas_principais.length > 0 && (
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                    gap: 12,
+                    marginBottom: 16,
+                  }}
+                >
+                  {relatorio.metricas_principais.map((m, i) => (
+                    <div
+                      key={i}
                       style={{
-                        margin: 0,
-                        fontSize: 11,
-                        color: "#555",
-                        fontWeight: 600,
-                        textTransform: "uppercase",
-                        letterSpacing: 0.5,
+                        background: "#0F0F0F",
+                        border: "1px solid #1E1E1E",
+                        borderRadius: 12,
+                        padding: "16px 18px",
+                        borderTop: `2px solid ${STATUS_CORES[m.status || ""] || "#1E1E1E"}`,
                       }}
                     >
-                      {m.label}
-                    </p>
-                    <p
-                      style={{
-                        margin: "6px 0 0",
-                        fontSize: 22,
-                        fontWeight: 700,
-                        color: STATUS_CORES[m.status] || "#E5E5E5",
-                        fontFamily: "'DM Mono', monospace",
-                      }}
-                    >
-                      {m.valor}
-                    </p>
-                    {m.variacao && (
                       <p
                         style={{
-                          margin: "4px 0 0",
+                          margin: 0,
                           fontSize: 11,
-                          color: m.variacao.startsWith("+")
-                            ? "#22c55e"
-                            : m.variacao.startsWith("-")
-                              ? "#ef4444"
-                              : "#666",
+                          color: "#555",
+                          fontWeight: 600,
+                          textTransform: "uppercase",
+                          letterSpacing: 0.5,
                         }}
                       >
-                        {m.variacao}
+                        {m.label}
                       </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
+                      <p
+                        style={{
+                          margin: "6px 0 0",
+                          fontSize: 22,
+                          fontWeight: 700,
+                          color: STATUS_CORES[m.status || ""] || "#E5E5E5",
+                          fontFamily: "'DM Mono', monospace",
+                        }}
+                      >
+                        {m.valor}
+                      </p>
+                      {m.variacao && (
+                        <p
+                          style={{
+                            margin: "4px 0 0",
+                            fontSize: 11,
+                            color: m.variacao.startsWith("+")
+                              ? "#22c55e"
+                              : m.variacao.startsWith("-")
+                                ? "#ef4444"
+                                : "#666",
+                          }}
+                        >
+                          {m.variacao}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
 
-            {/* Gráfico de Campanhas */}
             {dadosGraficoCampanhas.length > 1 && (
               <div
                 style={{
@@ -750,10 +845,7 @@ export default function RelatoriosIA() {
                     margin={{ top: 5, right: 5, bottom: 5, left: 5 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="#1E1E1E" />
-                    <XAxis
-                      dataKey="nome"
-                      tick={{ fill: "#555", fontSize: 10 }}
-                    />
+                    <XAxis dataKey="nome" tick={{ fill: "#555", fontSize: 10 }} />
                     <YAxis tick={{ fill: "#555", fontSize: 10 }} />
                     <Tooltip
                       contentStyle={{
@@ -775,8 +867,7 @@ export default function RelatoriosIA() {
               </div>
             )}
 
-            {/* Tabela de Campanhas */}
-            {relatorio.campanhas?.length > 0 && (
+            {relatorio.campanhas && relatorio.campanhas.length > 0 && (
               <div
                 style={{
                   background: "#0F0F0F",
@@ -837,8 +928,9 @@ export default function RelatoriosIA() {
                   <tbody>
                     {relatorio.campanhas.map((c, i) => {
                       const badge =
-                        AVALIACAO_BADGE[c.avaliacao] ||
+                        AVALIACAO_BADGE[c.avaliacao || ""] ||
                         AVALIACAO_BADGE.medio
+
                       return (
                         <tr
                           key={i}
@@ -944,7 +1036,6 @@ export default function RelatoriosIA() {
               </div>
             )}
 
-            {/* Análise Detalhada */}
             {relatorio.analise_detalhada && (
               <div
                 style={{
@@ -979,8 +1070,7 @@ export default function RelatoriosIA() {
               </div>
             )}
 
-            {/* Recomendações */}
-            {relatorio.recomendacoes?.length > 0 && (
+            {relatorio.recomendacoes && relatorio.recomendacoes.length > 0 && (
               <div
                 style={{
                   background: "#0F1A0A",
@@ -1037,7 +1127,6 @@ export default function RelatoriosIA() {
               </div>
             )}
 
-            {/* Rodapé */}
             <div
               style={{
                 textAlign: "center",
@@ -1052,7 +1141,6 @@ export default function RelatoriosIA() {
           </div>
         )}
 
-        {/* Estado vazio */}
         {!carregando && !relatorio && !erro && (
           <div
             style={{
@@ -1082,7 +1170,6 @@ export default function RelatoriosIA() {
           </div>
         )}
 
-        {/* Histórico */}
         {historico.length > 0 && !carregando && (
           <div
             style={{
@@ -1114,9 +1201,7 @@ export default function RelatoriosIA() {
                   key={i}
                   onClick={() => {
                     setComando(h.comando)
-                    const cl = clientes.find(
-                      (c) => c.nome === h.cliente,
-                    )
+                    const cl = clientes.find((c) => c.nome === h.cliente)
                     if (cl) setClienteSelecionado(cl)
                   }}
                   style={{
