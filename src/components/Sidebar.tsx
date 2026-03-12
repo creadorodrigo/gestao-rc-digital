@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, CheckSquare, UserCheck, TrendingUp, LogOut, Building2, NotebookPen, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { LayoutDashboard, CheckSquare, UserCheck, TrendingUp, LogOut, Building2, NotebookPen, PanelLeftClose, PanelLeftOpen, BarChart3 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 
 // ── Context para expor o estado collapsed ao Layout ──────────────────────────
