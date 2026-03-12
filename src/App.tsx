@@ -45,7 +45,7 @@ function AppRoutes() {
       <Route path="/tarefas" element={<ProtectedRoute><Tarefas /></ProtectedRoute>} />
       <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
       <Route path="/reunioes" element={<ProtectedRoute><Reunioes /></ProtectedRoute>} />
-      <Route path="/relatorios-ia" element={<ProtectedRoute><RelatoriosIA /></ProtectedRoute>} />
+      <Route path="/relatoriosia" element={<ProtectedRoute><RelatoriosIA /></ProtectedRoute>} />
       <Route path="/time" element={<ProtectedRoute requiredRole="admin"><Time /></ProtectedRoute>} />
       <Route path="/crm" element={<ProtectedRoute requiredRole="admin"><CRM /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
