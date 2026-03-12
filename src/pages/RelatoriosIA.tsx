@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from "react"
+// IMPORTANTE: Se você não tiver essa biblioteca instalada, rode: npm install @supabase/supabase-js
+import { createClient } from "@supabase/supabase-js" 
 import {
   BarChart,
   Bar,
@@ -12,6 +14,9 @@ import {
 const SUPABASE_URL = "https://mtckfghzgynimptclvtd.supabase.co"
 const SUPABASE_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10Y2tmZ2h6Z3luaW1wdGNsdnRkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3NjUyMzcsImV4cCI6MjA4ODM0MTIzN30.KmAd7UBD_3GTShGMK4ZQo5EszQSg1FETOfpBN65du18"
+
+// Inicializamos o cliente do Supabase aqui para poder ler a sessão do usuário
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 
 const SUGESTOES = [
   "Overview geral da conta dos últimos 7 dias",
@@ -113,12 +118,19 @@ export default function RelatoriosIA() {
         setCarregandoClientes(true)
         setErro(null)
 
+        // Buscando a sessão do usuário logado
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        if (sessionError) throw new Error("Erro ao validar sessão")
+        
+        // Se houver sessão, usa o token, senão usa a chave anon
+        const token = session?.access_token || SUPABASE_KEY
+
         const res = await fetch(
           `${SUPABASE_URL}/rest/v1/clientes?select=id,nome,conta_meta_ads,status&conta_meta_ads=not.is.null&order=nome`,
           {
             headers: {
               apikey: SUPABASE_KEY,
-              Authorization: `Bearer ${SUPABASE_KEY}`,
+              Authorization: `Bearer ${token}`, // Alterado para enviar o token
             },
           },
         )
@@ -210,12 +222,16 @@ export default function RelatoriosIA() {
     ]
 
     try {
+      // Buscando a sessão do usuário logado para a Edge Function
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token || SUPABASE_KEY
+
       const res = await fetch(`${SUPABASE_URL}/functions/v1/relatorios-ia`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           apikey: SUPABASE_KEY,
-          Authorization: `Bearer ${SUPABASE_KEY}`,
+          Authorization: `Bearer ${token}`, // Alterado para enviar o token
         },
         body: JSON.stringify({
           account_id: clienteSelecionado.conta_meta_ads,
