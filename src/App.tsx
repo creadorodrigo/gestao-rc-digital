@@ -6,21 +6,10 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Tarefas from './pages/Tarefas'
 import Clientes from './pages/Clientes'
+import Relatórios IA from './pages/Relatoriosia'
 import Time from './pages/Time'
 import CRM from './pages/CRM'
 import Reunioes from './pages/Reunioes'
-
-// Junto com os outros imports no topo do Layout.tsx:
-import { BarChart3 } from 'lucide-react'  // ou o ícone que já usa
-
-// No array de itens do menu, adicione este objeto 
-// (logo depois de "reunioes" e antes de "time"):
-{
-  label: 'Relatórios IA',
-  path: '/relatorios-ia',
-  icon: BarChart3,       // ajuste pro ícone que usar no seu sidebar
-  adminOnly: true,       // só admin vê
-}
 
 function ProtectedRoute({ children, requiredRole }: { children: React.ReactNode; requiredRole?: 'admin' }) {
   const { user, loading } = useAuth()
