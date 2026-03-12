@@ -11,7 +11,7 @@ import {
 
 const SUPABASE_URL = "https://mtckfghzgynimptclvtd.supabase.co"
 const SUPABASE_KEY =
-  "SUA_CHAVE_AQUI"
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10Y2tmZ2h6Z3luaW1wdGNsdnRkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3NjUyMzcsImV4cCI6MjA4ODM0MTIzN30.KmAd7UBD_3GTShGMK4ZQo5EszQSg1FETOfpBN65du18"
 
 const SUGESTOES = [
   "Overview geral da conta dos últimos 7 dias",
