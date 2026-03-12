@@ -56,7 +56,7 @@ export default function RelatoriosIA() {
     async function carregarClientes() {
       try {
         const res = await fetch(
-          `${SUPABASE_URL}/rest/v1/clientes?conta_meta_ads=not.is.null&conta_meta_ads=not.eq.&select=id,nome,conta_meta_ads,status&order=nome`,
+          `${SUPABASE_URL}/rest/v1/clientes?select=id,nome,conta_meta_ads,status&conta_meta_ads=not.is.null&order=nome`,
           {
             headers: {
               apikey: SUPABASE_KEY,
@@ -217,7 +217,7 @@ export default function RelatoriosIA() {
           >
             Relatórios IA
           </h1>
-          <p style={{ margin: 0, fontSize: 12, color: "#555" }}>
+          <p style={{ margin: 0, fontSize: 12, color: "#999" }}>
             Haiku coleta · Sonnet analisa · Meta Ads + Claude AI
           </p>
         </div>
@@ -239,7 +239,7 @@ export default function RelatoriosIA() {
             <label
               style={{
                 fontSize: 12,
-                color: "#666",
+                color: "#FFFFFF",
                 display: "block",
                 marginBottom: 6,
                 fontWeight: 600,
@@ -320,7 +320,7 @@ export default function RelatoriosIA() {
             <label
               style={{
                 fontSize: 12,
-                color: "#666",
+                color: "#FFFFFF",
                 display: "block",
                 marginBottom: 6,
                 fontWeight: 600,
@@ -386,7 +386,7 @@ export default function RelatoriosIA() {
               style={{
                 margin: "6px 0 0",
                 fontSize: 11,
-                color: "#333",
+                color: "#AAA",
               }}
             >
               Ctrl+Enter para gerar · Descreva livremente o que precisa
@@ -398,7 +398,7 @@ export default function RelatoriosIA() {
             <label
               style={{
                 fontSize: 10,
-                color: "#444",
+                color: "#AAA",
                 display: "block",
                 marginBottom: 6,
                 fontWeight: 600,
@@ -424,7 +424,7 @@ export default function RelatoriosIA() {
                     borderRadius: 16,
                     border: "1px solid #1E1E1E",
                     background: "transparent",
-                    color: "#555",
+                    color: "#BBB",
                     fontSize: 11,
                     cursor: "pointer",
                     fontFamily: "'Nunito', sans-serif",
@@ -480,7 +480,7 @@ export default function RelatoriosIA() {
             >
               {progresso}
             </p>
-            <p style={{ margin: "8px 0 0", fontSize: 12, color: "#444" }}>
+            <p style={{ margin: "8px 0 0", fontSize: 12, color: "#AAA" }}>
               Haiku coleta os dados do Meta · Sonnet gera a análise
             </p>
             <div
@@ -498,7 +498,7 @@ export default function RelatoriosIA() {
                   background: "#141414",
                   border: "1px solid #1E1E1E",
                   fontSize: 10,
-                  color: "#666",
+                  color: "#AAA",
                 }}
               >
                 📡 MCP Meta Ads
@@ -510,7 +510,7 @@ export default function RelatoriosIA() {
                   background: "#141414",
                   border: "1px solid #1E1E1E",
                   fontSize: 10,
-                  color: "#666",
+                  color: "#AAA",
                 }}
               >
                 ⚡ Haiku 4.5
@@ -522,7 +522,7 @@ export default function RelatoriosIA() {
                   background: "#141414",
                   border: "1px solid #1E1E1E",
                   fontSize: 10,
-                  color: "#666",
+                  color: "#AAA",
                 }}
               >
                 🧠 Sonnet 4
@@ -738,7 +738,7 @@ export default function RelatoriosIA() {
                     margin: "0 0 16px",
                     fontSize: 13,
                     fontWeight: 700,
-                    color: "#666",
+                    color: "#FFFFFF",
                     letterSpacing: 0.5,
                   }}
                 >
@@ -792,7 +792,7 @@ export default function RelatoriosIA() {
                     margin: "0 0 16px",
                     fontSize: 13,
                     fontWeight: 700,
-                    color: "#666",
+                    color: "#FFFFFF",
                     letterSpacing: 0.5,
                   }}
                 >
@@ -960,7 +960,7 @@ export default function RelatoriosIA() {
                     margin: "0 0 12px",
                     fontSize: 13,
                     fontWeight: 700,
-                    color: "#666",
+                    color: "#FFFFFF",
                     letterSpacing: 0.5,
                   }}
                 >
@@ -1043,7 +1043,7 @@ export default function RelatoriosIA() {
                 textAlign: "center",
                 padding: "12px 0 24px",
                 fontSize: 11,
-                color: "#333",
+                color: "#888",
               }}
             >
               Relatório gerado por Claude AI · RC Digital ·{" "}
@@ -1095,7 +1095,7 @@ export default function RelatoriosIA() {
               style={{
                 margin: "0 0 10px",
                 fontSize: 11,
-                color: "#333",
+                color: "#888",
                 fontWeight: 700,
                 letterSpacing: 0.5,
               }}
@@ -1124,7 +1124,7 @@ export default function RelatoriosIA() {
                     background: "transparent",
                     border: "1px solid #141414",
                     borderRadius: 6,
-                    color: "#444",
+                    color: "#CCC",
                     fontSize: 11,
                     cursor: "pointer",
                     textAlign: "left",
@@ -1137,7 +1137,7 @@ export default function RelatoriosIA() {
                   <span>
                     {h.cliente} — {h.comando}
                   </span>
-                  <span style={{ color: "#333", fontSize: 10 }}>
+                  <span style={{ color: "#888", fontSize: 10 }}>
                     {h.timestamp.toLocaleTimeString("pt-BR", {
                       hour: "2-digit",
                       minute: "2-digit",
