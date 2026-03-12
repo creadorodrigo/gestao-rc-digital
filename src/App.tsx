@@ -6,7 +6,7 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Tarefas from './pages/Tarefas'
 import Clientes from './pages/Clientes'
-import Relatórios IA from './pages/Relatoriosia'
+import RelatóriosIA from './pages/Relatoriosia'
 import Time from './pages/Time'
 import CRM from './pages/CRM'
 import Reunioes from './pages/Reunioes'
@@ -45,6 +45,7 @@ function AppRoutes() {
       <Route path="/tarefas" element={<ProtectedRoute><Tarefas /></ProtectedRoute>} />
       <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
       <Route path="/reunioes" element={<ProtectedRoute><Reunioes /></ProtectedRoute>} />
+      <Route path="/relatoriosia" element={<ProtectedRoute><RelatoriosIA /></ProtectedRoute>} />
       <Route path="/time" element={<ProtectedRoute requiredRole="admin"><Time /></ProtectedRoute>} />
       <Route path="/crm" element={<ProtectedRoute requiredRole="admin"><CRM /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
