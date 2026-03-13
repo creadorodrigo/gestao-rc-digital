@@ -2,8 +2,7 @@ import { useState, useEffect, useRef } from "react"
 import { createClient } from "@supabase/supabase-js"
 
 const SUPABASE_URL = "https://mtckfghzgynimptclvtd.supabase.co"
-const SUPABASE_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10Y2tmZ2h6Z3luaW1wdGNsdnRkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3NjUyMzcsImV4cCI6MjA4ODM0MTIzN30.KmAd7UBD_3GTShGMK4ZQo5EszQSg1FETOfpBN65du18"
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10Y2tmZ2h6Z3luaW1wdGNsdnRkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3NjUyMzcsImV4cCI6MjA4ODM0MTIzN30.KmAd7UBD_3GTShGMK4ZQo5EszQSg1FETOfpBN65du18"
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 
@@ -23,36 +22,16 @@ type Cliente = {
 
 type DadosColetados = {
   kpis: {
-    investimento: string
-    alcance: string
-    impressoes: string
-    ctr: string
-    cpc: string
-    cpm: string
-    visualizacoes_pagina: string
-    carrinhos: string
-    compras: string
-    roas: string
-    mensagens_iniciadas: string
+    investimento: string; alcance: string; impressoes: string; ctr: string; cpc: string;
+    cpm: string; visualizacoes_pagina: string; carrinhos: string; compras: string;
+    roas: string; mensagens_iniciadas: string;
   }
-  campanhas: Array<{
-    nome: string
-    spend: string
-    roas: string
-    compras: string
-    status: string
-  }>
+  campanhas: Array<{ nome: string; spend: string; roas: string; compras: string; status: string; }>
 }
 
 type AnaliseIA = {
-  resumo_estrategico: string
-  analise_funil: string
-  gargalos_identificados: string[]
-  plano_de_acao: string[]
-  insights_campanhas: Array<{
-    nome_campanha: string
-    insight: string
-  }>
+  resumo_estrategico: string; analise_funil: string; gargalos_identificados: string[];
+  plano_de_acao: string[]; insights_campanhas: Array<{ nome_campanha: string; insight: string; }>
 }
 
 export default function RelatoriosIA() {
@@ -66,6 +45,7 @@ export default function RelatoriosIA() {
   
   const [dadosBase, setDadosBase] = useState<DadosColetados | null>(null)
   const [analiseProfunda, setAnaliseProfunda] = useState<AnaliseIA | null>(null)
+  const [debugMcp, setDebugMcp] = useState<string>("") // <--- NOVO: Estado para Debug
   const [erro, setErro] = useState<string | null>(null)
   const [progresso, setProgresso] = useState("")
 
@@ -80,22 +60,17 @@ export default function RelatoriosIA() {
         setCarregandoClientes(true)
         const { data: { session } } = await supabase.auth.getSession()
         const token = session?.access_token || SUPABASE_KEY
-
-        const res = await fetch(
-          `${SUPABASE_URL}/rest/v1/clientes?select=id,nome,conta_meta_ads,status&conta_meta_ads=not.is.null&order=nome`,
-          { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${token}` } },
-        )
-
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/clientes?select=id,nome,conta_meta_ads,status&conta_meta_ads=not.is.null&order=nome`, {
+          headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${token}` }
+        })
         if (!res.ok) throw new Error("Erro ao carregar clientes")
-        const data: any = await res.json()
-
-        if (!ativo) return
-        if (Array.isArray(data)) {
+        const data = await res.json()
+        if (ativo && Array.isArray(data)) {
           setClientes(data)
           if (data.length > 0) setClienteSelecionado(data[0])
         }
       } catch (err) {
-        setErro(err instanceof Error ? err.message : "Erro desconhecido")
+        setErro(err instanceof Error ? err.message : "Erro ao carregar lista")
       } finally {
         if (ativo) setCarregandoClientes(false)
       }
@@ -104,47 +79,41 @@ export default function RelatoriosIA() {
     return () => { ativo = false }
   }, [])
 
-  // --- FUNÇÕES DE UTILIDADE ---
-  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-      handleColetarDados()
-    }
-  }
-
   function usarSugestao(sug: string) {
     setComando(sug)
     inputRef.current?.focus()
   }
 
-  // FASE 1: COLETAR E FILTRAR (Haiku)
+  // FASE 1: COLETAR
   async function handleColetarDados() {
     if (!clienteSelecionado || !comando.trim()) return
-
     setColetandoDados(true)
     setErro(null)
     setDadosBase(null)
     setAnaliseProfunda(null)
+    setDebugMcp("") // Limpa debug anterior
     setProgresso("Haiku filtrando dados e calculando KPIs...")
 
     try {
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token || SUPABASE_KEY
-
       const res = await fetch(`${SUPABASE_URL}/functions/v1/relatorios-ia`, {
         method: "POST",
         headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           account_id: clienteSelecionado.conta_meta_ads,
           cliente_nome: clienteSelecionado.nome,
-          comando: comando.trim(), // Enviando o filtro para a IA
+          comando: comando.trim(),
           acao: "coletar" 
         }),
       })
 
       const data = await res.json()
-      if (!res.ok || !data.success) throw new Error(data.error || "Erro ao coletar dados")
+      if (!res.ok || !data.success) throw new Error(data.error || "Erro na coleta")
 
       setDadosBase(data.dados)
+      setDebugMcp(typeof data.debug_mcp === 'string' ? data.debug_mcp : JSON.stringify(data.debug_mcp, null, 2))
+      
       setTimeout(() => resultadoRef.current?.scrollIntoView({ behavior: "smooth" }), 200)
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro desconhecido")
@@ -154,10 +123,9 @@ export default function RelatoriosIA() {
     }
   }
 
-  // FASE 2: ANÁLISE PROFUNDA (Sonnet)
+  // FASE 2: ANALISAR
   async function handleAnalisarIA() {
     if (!clienteSelecionado || !dadosBase) return
-
     setAnalisandoIA(true)
     setErro(null)
     setProgresso("Sonnet 4.5 gerando plano de ação...")
@@ -165,7 +133,6 @@ export default function RelatoriosIA() {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token || SUPABASE_KEY
-
       const res = await fetch(`${SUPABASE_URL}/functions/v1/relatorios-ia`, {
         method: "POST",
         headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: `Bearer ${token}` },
@@ -177,10 +144,8 @@ export default function RelatoriosIA() {
           dados_coletados: dadosBase
         }),
       })
-
       const data = await res.json()
-      if (!res.ok || !data.success) throw new Error(data.error || "Erro na análise da IA")
-
+      if (!res.ok || !data.success) throw new Error(data.error || "Erro na análise")
       setAnaliseProfunda(data.analise)
       setTimeout(() => analiseRef.current?.scrollIntoView({ behavior: "smooth" }), 200)
     } catch (err) {
@@ -212,70 +177,40 @@ export default function RelatoriosIA() {
       </div>
 
       <div style={{ padding: "20px 24px", maxWidth: 1200, margin: "0 auto" }}>
-        {/* CONTROLES PRINCIPAIS */}
+        {/* CONTROLES */}
         <div style={{ background: "#0F0F0F", border: "1px solid #1E1E1E", borderRadius: 14, padding: 20, marginBottom: 24 }}>
-          
-          {/* 1. Seleção de Cliente */}
           <div style={{ marginBottom: 20 }}>
             <label style={{ fontSize: 11, color: "#888", display: "block", marginBottom: 8, fontWeight: 700, textTransform: "uppercase" }}>1. Selecione a Conta</label>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {clientes.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => setClienteSelecionado(c)}
-                  style={{
+                <button key={c.id} onClick={() => setClienteSelecionado(c)} style={{
                     padding: "8px 14px", borderRadius: 8, border: `1px solid ${clienteSelecionado?.id === c.id ? "#C9A84C" : "#1E1E1E"}`,
                     background: clienteSelecionado?.id === c.id ? "#C9A84C15" : "#141414", color: clienteSelecionado?.id === c.id ? "#C9A84C" : "#888",
-                    fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 6
-                  }}
-                >
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: c.status === "Ativo" ? "#22c55e" : "#eab308", flexShrink: 0 }} />
+                    fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6
+                }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: c.status === "Ativo" ? "#22c55e" : "#eab308" }} />
                   {c.nome}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* 2. Campo de Comando */}
           <div style={{ marginBottom: 20 }}>
             <label style={{ fontSize: 11, color: "#888", display: "block", marginBottom: 8, fontWeight: 700, textTransform: "uppercase" }}>2. O que deseja analisar? (Filtro IA)</label>
-            <textarea
-                ref={inputRef}
-                value={comando}
-                onChange={(e) => setComando(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder='Ex: "Campanhas ativas com gasto > 0 nos últimos 7 dias"'
-                rows={2}
-                style={{
-                  width: "100%", padding: "14px", borderRadius: 10, border: "1px solid #2A2A2A", background: "#141414",
-                  color: "#E5E5E5", fontSize: 14, resize: "none", outline: "none", lineHeight: 1.5, marginBottom: 12
-                }}
-              />
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {SUGESTOES.map((sug, i) => (
-                  <button
-                    key={i} onClick={() => usarSugestao(sug)}
-                    style={{
-                      padding: "5px 12px", borderRadius: 16, border: "1px solid #1E1E1E", background: "transparent",
-                      color: "#666", fontSize: 11, cursor: "pointer", transition: "all 0.2s"
-                    }}
-                  >
-                    {sug}
-                  </button>
-                ))}
-              </div>
+            <textarea ref={inputRef} value={comando} onChange={(e) => setComando(e.target.value)} placeholder='Ex: "Campanhas com nome CONSUMIDOR nos últimos 7 dias"' rows={2} style={{
+                width: "100%", padding: "14px", borderRadius: 10, border: "1px solid #2A2A2A", background: "#141414", color: "#E5E5E5", fontSize: 14, resize: "none", outline: "none", lineHeight: 1.5, marginBottom: 12
+            }} />
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {SUGESTOES.map((sug, i) => (
+                <button key={i} onClick={() => usarSugestao(sug)} style={{ padding: "5px 12px", borderRadius: 16, border: "1px solid #1E1E1E", background: "transparent", color: "#666", fontSize: 11, cursor: "pointer" }}>{sug}</button>
+              ))}
+            </div>
           </div>
 
-          {/* 3. Botão de Coleta */}
           <div style={{ display: "flex", alignItems: "center", gap: 16, borderTop: "1px solid #1E1E1E", paddingTop: 20 }}>
-            <button
-              onClick={handleColetarDados}
-              disabled={coletandoDados || !clienteSelecionado || !comando.trim()}
-              style={{
-                padding: "12px 28px", borderRadius: 10, border: "none", background: "#22c55e", color: "#000",
-                fontSize: 14, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, transition: "0.2s"
-              }}
-            >
+            <button onClick={handleColetarDados} disabled={coletandoDados || !clienteSelecionado || !comando.trim()} style={{
+                padding: "12px 28px", borderRadius: 10, border: "none", background: "#22c55e", color: "#000", fontSize: 14, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", gap: 8
+            }}>
               {coletandoDados ? "⏳ FILTRANDO..." : "⚡ COLETAR DADOS"}
             </button>
           </div>
@@ -293,91 +228,57 @@ export default function RelatoriosIA() {
           <div ref={resultadoRef} style={{ animation: "fadeIn 0.5s ease-in-out", marginBottom: 40 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
               <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#FFF" }}>Raio-X da Operação</h2>
-              <span style={{ fontSize: 12, color: "#22c55e", background: "#22c55e15", padding: "4px 10px", borderRadius: 12 }}>Gasto {'>'} 0 Identificado</span>
             </div>
-
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginBottom: 24 }}>
               <KpiCard title="Investimento" value={dadosBase.kpis.investimento} icon="💰" />
               <KpiCard title="ROAS" value={dadosBase.kpis.roas} icon="🚀" />
               <KpiCard title="Compras" value={dadosBase.kpis.compras} icon="🛍️" />
-              <KpiCard title="Carrinhos" value={dadosBase.kpis.carrinhos} icon="🛒" />
-              <KpiCard title="Visitas" value={dadosBase.kpis.visualizacoes_pagina} icon="👁️" />
-              <KpiCard title="Cliques" value={dadosBase.kpis.alcance} icon="🖱️" />
+              <KpiCard title="Mensagens" value={dadosBase.kpis.mensagens_iniciadas} icon="💬" />
               <KpiCard title="CTR" value={dadosBase.kpis.ctr} icon="🎯" />
               <KpiCard title="CPC" value={dadosBase.kpis.cpc} icon="👆" />
-              <KpiCard title="CPM" value={dadosBase.kpis.cpm} icon="📢" />
-              <KpiCard title="Impressões" value={dadosBase.kpis.impressoes} icon="📱" />
-              <KpiCard title="Mensagens" value={dadosBase.kpis.mensagens_iniciadas} icon="💬" />
             </div>
 
-            {/* BOTÃO PARA FASE 2 */}
             <div style={{ background: "linear-gradient(135deg, #1A1500 0%, #0F0F0F 100%)", border: "1px solid #C9A84C66", borderRadius: 14, padding: 32, textAlign: "center" }}>
-              <h3 style={{ margin: "0 0 8px", color: "#C9A84C", fontSize: 18 }}>Precisa de uma análise estratégica?</h3>
-              <p style={{ margin: "0 0 24px", color: "#888", fontSize: 14 }}>O Sonnet 4.5 vai analisar esses gargalos e sugerir melhorias imediatas.</p>
-              <button
-                onClick={handleAnalisarIA}
-                disabled={analisandoIA}
-                style={{
-                  padding: "16px 40px", borderRadius: 12, border: "none", background: "linear-gradient(135deg, #C9A84C, #A88B3A)", color: "#000",
-                  fontSize: 15, fontWeight: 900, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 10, transition: "0.2s"
-                }}
-              >
+              <h3 style={{ margin: "0 0 8px", color: "#C9A84C", fontSize: 18 }}>Análise Estratégica?</h3>
+              <button onClick={handleAnalisarIA} disabled={analisandoIA} style={{
+                  padding: "16px 40px", borderRadius: 12, border: "none", background: "linear-gradient(135deg, #C9A84C, #A88B3A)", color: "#000", fontSize: 15, fontWeight: 900, cursor: "pointer"
+              }}>
                 {analisandoIA ? "🧠 PENSANDO..." : "✨ GERAR DIAGNÓSTICO IA"}
               </button>
-              {analisandoIA && <p style={{ marginTop: 16, color: "#C9A84C", fontSize: 12 }}>{progresso}</p>}
             </div>
+          </div>
+        )}
+
+        {/* PAINEL DE DEBUG (BRUTO) */}
+        {debugMcp && (
+          <div style={{ marginTop: 40, background: "#080808", border: "1px dashed #333", borderRadius: 14, padding: 20 }}>
+            <h3 style={{ margin: "0 0 10px", fontSize: 12, color: "#555", textTransform: "uppercase" }}>🛠 Debug: Resposta Bruta do MCP</h3>
+            <textarea readOnly value={debugMcp} style={{
+                width: "100%", height: 250, background: "#000", color: "#00FF00", fontFamily: "monospace", fontSize: 11, border: "1px solid #1A1A1A", padding: 10, borderRadius: 8
+            }} />
           </div>
         )}
 
         {/* RESULTADOS FASE 2 */}
         {analiseProfunda && (
-          <div ref={analiseRef} style={{ animation: "fadeIn 0.8s ease-in-out" }}>
-            <h2 style={{ fontSize: 22, fontWeight: 800, color: "#FFF", borderBottom: "2px solid #1E1E1E", paddingBottom: 16, marginBottom: 24 }}>
-              🧠 Diagnóstico do Gestor Sênior
-            </h2>
-
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))", gap: 20, marginBottom: 20 }}>
+          <div ref={analiseRef} style={{ animation: "fadeIn 0.8s ease-in-out", marginTop: 40 }}>
+            <h2 style={{ fontSize: 22, fontWeight: 800, color: "#FFF", borderBottom: "2px solid #1E1E1E", paddingBottom: 16, marginBottom: 24 }}>🧠 Diagnóstico do Gestor Sênior</h2>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))", gap: 20 }}>
               <div style={{ background: "#0F0F0F", border: "1px solid #1E1E1E", borderRadius: 14, padding: 24 }}>
-                <h3 style={{ margin: "0 0 16px", fontSize: 13, color: "#C9A84C", textTransform: "uppercase" }}>Visão Estratégica</h3>
-                <p style={{ margin: 0, color: "#DDD", fontSize: 14, lineHeight: 1.6 }}>{analiseProfunda.resumo_estrategico}</p>
-              </div>
-              <div style={{ background: "#0F0F0F", border: "1px solid #1E1E1E", borderRadius: 14, padding: 24 }}>
-                <h3 style={{ margin: "0 0 16px", fontSize: 13, color: "#60A5FA", textTransform: "uppercase" }}>Análise de Funil</h3>
-                <p style={{ margin: 0, color: "#DDD", fontSize: 14, lineHeight: 1.6 }}>{analiseProfunda.analise_funil}</p>
-              </div>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))", gap: 20, marginBottom: 24 }}>
-              <div style={{ background: "#1A0F0F", border: "1px solid #ef444444", borderRadius: 14, padding: 24 }}>
-                <h3 style={{ margin: "0 0 16px", fontSize: 13, color: "#ef4444", textTransform: "uppercase" }}>⚠️ Gargalos</h3>
-                <ul style={{ margin: 0, paddingLeft: 20, color: "#FCA5A5", fontSize: 14, lineHeight: 1.6 }}>
-                  {analiseProfunda.gargalos_identificados?.map((gargalo, i) => <li key={i} style={{ marginBottom: 8 }}>{gargalo}</li>)}
-                </ul>
+                <h3 style={{ color: "#C9A84C", fontSize: 13, textTransform: "uppercase" }}>Visão Estratégica</h3>
+                <p style={{ color: "#DDD", fontSize: 14, lineHeight: 1.6 }}>{analiseProfunda.resumo_estrategico}</p>
               </div>
               <div style={{ background: "#0F1A12", border: "1px solid #22c55e44", borderRadius: 14, padding: 24 }}>
-                <h3 style={{ margin: "0 0 16px", fontSize: 13, color: "#22c55e", textTransform: "uppercase" }}>✅ Plano de Ação</h3>
-                <ul style={{ margin: 0, paddingLeft: 20, color: "#86EFAC", fontSize: 14, lineHeight: 1.6 }}>
-                  {analiseProfunda.plano_de_acao?.map((acao, i) => <li key={i} style={{ marginBottom: 8 }}>{acao}</li>)}
+                <h3 style={{ color: "#22c55e", fontSize: 13, textTransform: "uppercase" }}>✅ Plano de Ação</h3>
+                <ul style={{ color: "#86EFAC", fontSize: 14, paddingLeft: 20 }}>
+                  {analiseProfunda.plano_de_acao?.map((acao, i) => <li key={i}>{acao}</li>)}
                 </ul>
               </div>
             </div>
-          </div>
-        )}
-
-        {!coletandoDados && !dadosBase && !erro && (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", paddingTop: 40, gap: 16 }}>
-            <div style={{ fontSize: 48, opacity: 0.3 }}>📦</div>
-            <p style={{ color: "#555", textAlign: "center", fontSize: 13 }}>
-              Selecione o cliente e descreva o filtro para começar.
-            </p>
           </div>
         )}
       </div>
-
-      <style>{`
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        * { box-sizing: border-box; }
-      `}</style>
+      <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } } * { box-sizing: border-box; }`}</style>
     </div>
   )
 }
