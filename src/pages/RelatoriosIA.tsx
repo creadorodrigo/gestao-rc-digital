@@ -206,7 +206,8 @@ export default function RelatoriosIA() {
       <div style={{ padding: "20px 24px", maxWidth: 1200, margin: "0 auto" }}>
         {/* CONTROLES PRINCIPAIS */}
         <div style={{ background: "#0F0F0F", border: "1px solid #1E1E1E", borderRadius: 14, padding: 20, marginBottom: 24 }}>
-          {/* Seleção de Cliente (Igual ao anterior) */}
+          
+          {/* 1. Seleção de Cliente */}
           <div style={{ marginBottom: 20 }}>
             <label style={{ fontSize: 12, color: "#FFFFFF", display: "block", marginBottom: 8, fontWeight: 600 }}>1. SELECIONE A CONTA</label>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -227,18 +228,53 @@ export default function RelatoriosIA() {
             </div>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          {/* 2. Campo de Texto (O Comando) */}
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ fontSize: 12, color: "#FFFFFF", display: "block", marginBottom: 6, fontWeight: 600 }}>2. O QUE VOCÊ QUER VER?</label>
+            <textarea
+                ref={inputRef}
+                value={comando}
+                onChange={(e) => setComando(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder='Ex: "Dados das campanhas ativas de Dia do Consumidor dos últimos 7 dias"'
+                rows={2}
+                disabled={coletandoDados || analisandoIA}
+                style={{
+                  width: "100%", padding: "14px", borderRadius: 10, border: "1px solid #2A2A2A", background: "#141414",
+                  color: "#E5E5E5", fontSize: 14, resize: "none", outline: "none", lineHeight: 1.5, marginBottom: 12
+                }}
+              />
+              
+              {/* Sugestões Rápidas */}
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {SUGESTOES.map((sug, i) => (
+                  <button
+                    key={i} onClick={() => usarSugestao(sug)} disabled={coletandoDados || analisandoIA}
+                    style={{
+                      padding: "5px 10px", borderRadius: 16, border: "1px solid #1E1E1E", background: "transparent",
+                      color: "#BBB", fontSize: 11, cursor: "pointer", transition: "all 0.2s"
+                    }}
+                  >
+                    {sug}
+                  </button>
+                ))}
+              </div>
+          </div>
+
+          {/* 3. Botão de Coleta */}
+          <div style={{ display: "flex", alignItems: "center", gap: 16, borderTop: "1px solid #1E1E1E", paddingTop: 20 }}>
             <button
               onClick={handleColetarDados}
-              disabled={coletandoDados || analisandoIA || !clienteSelecionado}
+              disabled={coletandoDados || analisandoIA || !clienteSelecionado || !comando.trim()}
               style={{
                 padding: "12px 24px", borderRadius: 10, border: "none", background: "#22c55e", color: "#000",
-                fontSize: 14, fontWeight: 800, cursor: coletandoDados ? "wait" : "pointer", display: "flex", alignItems: "center", gap: 8, transition: "0.2s"
+                fontSize: 14, fontWeight: 800, cursor: (coletandoDados || !comando.trim()) ? "not-allowed" : "pointer", 
+                display: "flex", alignItems: "center", gap: 8, transition: "0.2s", opacity: !comando.trim() ? 0.5 : 1
               }}
             >
-              {coletandoDados ? "⏳ EXTRAINDO..." : "⚡ COLETAR DADOS DA CONTA"}
+              {coletandoDados ? "⏳ EXTRAINDO..." : "⚡ COLETAR DADOS"}
             </button>
-            <span style={{ fontSize: 12, color: "#666" }}>Extração direta do Meta Ads. Não consome IA complexa.</span>
+            <span style={{ fontSize: 12, color: "#666" }}>O Haiku vai filtrar os dados com base no seu pedido acima.</span>
           </div>
         </div>
 
