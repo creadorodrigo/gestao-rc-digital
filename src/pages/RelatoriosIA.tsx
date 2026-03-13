@@ -8,10 +8,10 @@ const SUPABASE_KEY =
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 
 const SUGESTOES = [
-  "Quais campanhas estão puxando o ROAS para baixo?",
-  "Onde está o gargalo do funil: clique, página ou carrinho?",
+  "Filtrar campanhas de Dia do Consumidor",
+  "Apenas campanhas ativas com gasto > 0",
+  "Análise de funil: clique, página e carrinho",
   "Como otimizar o orçamento para o fim de semana?",
-  "Análise de custo por aquisição (CPA) atual",
 ]
 
 type Cliente = {
@@ -21,7 +21,6 @@ type Cliente = {
   status: string | null
 }
 
-// Tipagem da Fase 1 (Haiku)
 type DadosColetados = {
   kpis: {
     investimento: string
@@ -45,7 +44,6 @@ type DadosColetados = {
   }>
 }
 
-// Tipagem da Fase 2 (Sonnet 4.5)
 type AnaliseIA = {
   resumo_estrategico: string
   analise_funil: string
@@ -62,12 +60,10 @@ export default function RelatoriosIA() {
   const [clienteSelecionado, setClienteSelecionado] = useState<Cliente | null>(null)
   const [comando, setComando] = useState("")
   
-  // Estados de Carregamento Separados
   const [carregandoClientes, setCarregandoClientes] = useState(true)
   const [coletandoDados, setColetandoDados] = useState(false)
   const [analisandoIA, setAnalisandoIA] = useState(false)
   
-  // Dados Retornados
   const [dadosBase, setDadosBase] = useState<DadosColetados | null>(null)
   const [analiseProfunda, setAnaliseProfunda] = useState<AnaliseIA | null>(null)
   const [erro, setErro] = useState<string | null>(null)
@@ -108,15 +104,27 @@ export default function RelatoriosIA() {
     return () => { ativo = false }
   }, [])
 
-  // FASE 1: APENAS COLETAR DADOS (Rápido)
+  // --- FUNÇÕES DE UTILIDADE ---
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+      handleColetarDados()
+    }
+  }
+
+  function usarSugestao(sug: string) {
+    setComando(sug)
+    inputRef.current?.focus()
+  }
+
+  // FASE 1: COLETAR E FILTRAR (Haiku)
   async function handleColetarDados() {
-    if (!clienteSelecionado) return
+    if (!clienteSelecionado || !comando.trim()) return
 
     setColetandoDados(true)
     setErro(null)
     setDadosBase(null)
     setAnaliseProfunda(null)
-    setProgresso("Acessando Meta Ads e formatando KPIs...")
+    setProgresso("Haiku filtrando dados e calculando KPIs...")
 
     try {
       const { data: { session } } = await supabase.auth.getSession()
@@ -128,7 +136,8 @@ export default function RelatoriosIA() {
         body: JSON.stringify({
           account_id: clienteSelecionado.conta_meta_ads,
           cliente_nome: clienteSelecionado.nome,
-          acao: "coletar" // Rota 1
+          comando: comando.trim(), // Enviando o filtro para a IA
+          acao: "coletar" 
         }),
       })
 
@@ -145,13 +154,13 @@ export default function RelatoriosIA() {
     }
   }
 
-  // FASE 2: ANÁLISE PROFUNDA COM IA (Sonnet)
+  // FASE 2: ANÁLISE PROFUNDA (Sonnet)
   async function handleAnalisarIA() {
     if (!clienteSelecionado || !dadosBase) return
 
     setAnalisandoIA(true)
     setErro(null)
-    setProgresso("Sonnet 4.5 analisando gargalos do funil...")
+    setProgresso("Sonnet 4.5 gerando plano de ação...")
 
     try {
       const { data: { session } } = await supabase.auth.getSession()
@@ -163,8 +172,8 @@ export default function RelatoriosIA() {
         body: JSON.stringify({
           account_id: clienteSelecionado.conta_meta_ads,
           cliente_nome: clienteSelecionado.nome,
-          comando: comando.trim() || "Analisar funil geral",
-          acao: "analisar", // Rota 2
+          comando: comando.trim(),
+          acao: "analisar",
           dados_coletados: dadosBase
         }),
       })
@@ -182,7 +191,6 @@ export default function RelatoriosIA() {
     }
   }
 
-  // Componente de Card de KPI reaproveitável
   const KpiCard = ({ title, value, icon }: { title: string, value: string | undefined, icon: string }) => (
     <div style={{ background: "#0F0F0F", border: "1px solid #1E1E1E", borderRadius: 12, padding: "16px", display: "flex", flexDirection: "column", gap: 8 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#888", fontSize: 11, fontWeight: 700, textTransform: "uppercase" }}>
@@ -199,7 +207,7 @@ export default function RelatoriosIA() {
         <div style={{ width: 40, height: 40, borderRadius: 10, background: "linear-gradient(135deg, #C9A84C, #8B6914)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>📊</div>
         <div>
           <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#C9A84C" }}>Painel de Performance</h1>
-          <p style={{ margin: 0, fontSize: 12, color: "#999" }}>Extração Rápida + Consultoria IA</p>
+          <p style={{ margin: 0, fontSize: 12, color: "#999" }}>Filtros Inteligentes + Gestão IA</p>
         </div>
       </div>
 
@@ -209,7 +217,7 @@ export default function RelatoriosIA() {
           
           {/* 1. Seleção de Cliente */}
           <div style={{ marginBottom: 20 }}>
-            <label style={{ fontSize: 12, color: "#FFFFFF", display: "block", marginBottom: 8, fontWeight: 600 }}>1. SELECIONE A CONTA</label>
+            <label style={{ fontSize: 11, color: "#888", display: "block", marginBottom: 8, fontWeight: 700, textTransform: "uppercase" }}>1. Selecione a Conta</label>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {clientes.map((c) => (
                 <button
@@ -228,31 +236,28 @@ export default function RelatoriosIA() {
             </div>
           </div>
 
-          {/* 2. Campo de Texto (O Comando) */}
+          {/* 2. Campo de Comando */}
           <div style={{ marginBottom: 20 }}>
-            <label style={{ fontSize: 12, color: "#FFFFFF", display: "block", marginBottom: 6, fontWeight: 600 }}>2. O QUE VOCÊ QUER VER?</label>
+            <label style={{ fontSize: 11, color: "#888", display: "block", marginBottom: 8, fontWeight: 700, textTransform: "uppercase" }}>2. O que deseja analisar? (Filtro IA)</label>
             <textarea
                 ref={inputRef}
                 value={comando}
                 onChange={(e) => setComando(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder='Ex: "Dados das campanhas ativas de Dia do Consumidor dos últimos 7 dias"'
+                placeholder='Ex: "Campanhas ativas com gasto > 0 nos últimos 7 dias"'
                 rows={2}
-                disabled={coletandoDados || analisandoIA}
                 style={{
                   width: "100%", padding: "14px", borderRadius: 10, border: "1px solid #2A2A2A", background: "#141414",
                   color: "#E5E5E5", fontSize: 14, resize: "none", outline: "none", lineHeight: 1.5, marginBottom: 12
                 }}
               />
-              
-              {/* Sugestões Rápidas */}
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {SUGESTOES.map((sug, i) => (
                   <button
-                    key={i} onClick={() => usarSugestao(sug)} disabled={coletandoDados || analisandoIA}
+                    key={i} onClick={() => usarSugestao(sug)}
                     style={{
-                      padding: "5px 10px", borderRadius: 16, border: "1px solid #1E1E1E", background: "transparent",
-                      color: "#BBB", fontSize: 11, cursor: "pointer", transition: "all 0.2s"
+                      padding: "5px 12px", borderRadius: 16, border: "1px solid #1E1E1E", background: "transparent",
+                      color: "#666", fontSize: 11, cursor: "pointer", transition: "all 0.2s"
                     }}
                   >
                     {sug}
@@ -265,20 +270,17 @@ export default function RelatoriosIA() {
           <div style={{ display: "flex", alignItems: "center", gap: 16, borderTop: "1px solid #1E1E1E", paddingTop: 20 }}>
             <button
               onClick={handleColetarDados}
-              disabled={coletandoDados || analisandoIA || !clienteSelecionado || !comando.trim()}
+              disabled={coletandoDados || !clienteSelecionado || !comando.trim()}
               style={{
-                padding: "12px 24px", borderRadius: 10, border: "none", background: "#22c55e", color: "#000",
-                fontSize: 14, fontWeight: 800, cursor: (coletandoDados || !comando.trim()) ? "not-allowed" : "pointer", 
-                display: "flex", alignItems: "center", gap: 8, transition: "0.2s", opacity: !comando.trim() ? 0.5 : 1
+                padding: "12px 28px", borderRadius: 10, border: "none", background: "#22c55e", color: "#000",
+                fontSize: 14, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, transition: "0.2s"
               }}
             >
-              {coletandoDados ? "⏳ EXTRAINDO..." : "⚡ COLETAR DADOS"}
+              {coletandoDados ? "⏳ FILTRANDO..." : "⚡ COLETAR DADOS"}
             </button>
-            <span style={{ fontSize: 12, color: "#666" }}>O Haiku vai filtrar os dados com base no seu pedido acima.</span>
           </div>
         </div>
 
-        {/* MENSAGEM DE ERRO */}
         {erro && (
           <div style={{ background: "#1A0A0A", border: "1px solid #ef444444", borderRadius: 14, padding: "16px 20px", marginBottom: 20 }}>
             <p style={{ margin: 0, fontSize: 13, color: "#ef4444", fontWeight: 700 }}>❌ Erro</p>
@@ -286,22 +288,21 @@ export default function RelatoriosIA() {
           </div>
         )}
 
-        {/* FASE 1: PAINEL DE KPIS (Raio-X) */}
+        {/* RESULTADOS FASE 1 */}
         {dadosBase && (
           <div ref={resultadoRef} style={{ animation: "fadeIn 0.5s ease-in-out", marginBottom: 40 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#FFF" }}>Visão Geral (Raio-X)</h2>
-              <span style={{ fontSize: 12, color: "#888", background: "#1E1E1E", padding: "4px 10px", borderRadius: 12 }}>Dados Brutos</span>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#FFF" }}>Raio-X da Operação</h2>
+              <span style={{ fontSize: 12, color: "#22c55e", background: "#22c55e15", padding: "4px 10px", borderRadius: 12 }}>Gasto {'>'} 0 Identificado</span>
             </div>
 
-            {/* GRID DOS 11 KPIs */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginBottom: 24 }}>
               <KpiCard title="Investimento" value={dadosBase.kpis.investimento} icon="💰" />
               <KpiCard title="ROAS" value={dadosBase.kpis.roas} icon="🚀" />
               <KpiCard title="Compras" value={dadosBase.kpis.compras} icon="🛍️" />
               <KpiCard title="Carrinhos" value={dadosBase.kpis.carrinhos} icon="🛒" />
-              <KpiCard title="Visitas (LPV)" value={dadosBase.kpis.visualizacoes_pagina} icon="👁️" />
-              <KpiCard title="Cliques" value={dadosBase.kpis.alcance} icon="🖱️" /> {/* Usando alcance provisoriamente se não tiver cliques diretos */}
+              <KpiCard title="Visitas" value={dadosBase.kpis.visualizacoes_pagina} icon="👁️" />
+              <KpiCard title="Cliques" value={dadosBase.kpis.alcance} icon="🖱️" />
               <KpiCard title="CTR" value={dadosBase.kpis.ctr} icon="🎯" />
               <KpiCard title="CPC" value={dadosBase.kpis.cpc} icon="👆" />
               <KpiCard title="CPM" value={dadosBase.kpis.cpm} icon="📢" />
@@ -309,112 +310,73 @@ export default function RelatoriosIA() {
               <KpiCard title="Mensagens" value={dadosBase.kpis.mensagens_iniciadas} icon="💬" />
             </div>
 
-            {/* BOTÃO MÁGICO PARA FASE 2 */}
-            <div style={{ background: "linear-gradient(135deg, #1A1500 0%, #0F0F0F 100%)", border: "1px solid #C9A84C66", borderRadius: 14, padding: 24, textAlign: "center", display: "flex", flexDirection: "column", gap: 16, alignItems: "center" }}>
-              <div>
-                <h3 style={{ margin: "0 0 8px", color: "#C9A84C", fontSize: 16 }}>Deseja uma análise profunda destes números?</h3>
-                <p style={{ margin: 0, color: "#888", fontSize: 13, maxWidth: 500 }}>Acione o Gestor de Tráfego de IA. Ele cruzará o CPM com o CTR, analisará as quebras do funil e criará um plano de ação para a sua loja.</p>
-              </div>
-              
-              <div style={{ display: "flex", gap: 8, alignItems: "center", width: "100%", maxWidth: 600 }}>
-                <input 
-                  type="text" 
-                  value={comando} 
-                  onChange={e => setComando(e.target.value)}
-                  placeholder="Ex: Foque na campanha de Dia do Consumidor"
-                  style={{ flex: 1, padding: "14px", borderRadius: 8, background: "#0A0A0A", border: "1px solid #333", color: "#FFF", outline: "none" }}
-                />
-                <button
-                  onClick={handleAnalisarIA}
-                  disabled={analisandoIA}
-                  style={{
-                    padding: "14px 24px", borderRadius: 8, border: "none", background: "linear-gradient(135deg, #C9A84C, #A88B3A)", color: "#000",
-                    fontSize: 14, fontWeight: 800, cursor: analisandoIA ? "wait" : "pointer", display: "flex", alignItems: "center", gap: 8, transition: "0.2s", whiteSpace: "nowrap"
-                  }}
-                >
-                  {analisandoIA ? "🧠 PENSANDO..." : "✨ ANALISAR COM IA"}
-                </button>
-              </div>
-              {analisandoIA && <p style={{ margin: 0, color: "#C9A84C", fontSize: 12, animation: "pulse 1.5s infinite" }}>{progresso}</p>}
+            {/* BOTÃO PARA FASE 2 */}
+            <div style={{ background: "linear-gradient(135deg, #1A1500 0%, #0F0F0F 100%)", border: "1px solid #C9A84C66", borderRadius: 14, padding: 32, textAlign: "center" }}>
+              <h3 style={{ margin: "0 0 8px", color: "#C9A84C", fontSize: 18 }}>Precisa de uma análise estratégica?</h3>
+              <p style={{ margin: "0 0 24px", color: "#888", fontSize: 14 }}>O Sonnet 4.5 vai analisar esses gargalos e sugerir melhorias imediatas.</p>
+              <button
+                onClick={handleAnalisarIA}
+                disabled={analisandoIA}
+                style={{
+                  padding: "16px 40px", borderRadius: 12, border: "none", background: "linear-gradient(135deg, #C9A84C, #A88B3A)", color: "#000",
+                  fontSize: 15, fontWeight: 900, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 10, transition: "0.2s"
+                }}
+              >
+                {analisandoIA ? "🧠 PENSANDO..." : "✨ GERAR DIAGNÓSTICO IA"}
+              </button>
+              {analisandoIA && <p style={{ marginTop: 16, color: "#C9A84C", fontSize: 12 }}>{progresso}</p>}
             </div>
           </div>
         )}
 
-        {/* FASE 2: RESULTADO DA ANÁLISE IA (Sonnet) */}
+        {/* RESULTADOS FASE 2 */}
         {analiseProfunda && (
           <div ref={analiseRef} style={{ animation: "fadeIn 0.8s ease-in-out" }}>
             <h2 style={{ fontSize: 22, fontWeight: 800, color: "#FFF", borderBottom: "2px solid #1E1E1E", paddingBottom: 16, marginBottom: 24 }}>
               🧠 Diagnóstico do Gestor Sênior
             </h2>
 
-            {/* Resumo e Funil */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))", gap: 20, marginBottom: 20 }}>
               <div style={{ background: "#0F0F0F", border: "1px solid #1E1E1E", borderRadius: 14, padding: 24 }}>
-                <h3 style={{ margin: "0 0 16px", fontSize: 13, color: "#C9A84C", textTransform: "uppercase", letterSpacing: 1 }}>Visão Estratégica</h3>
+                <h3 style={{ margin: "0 0 16px", fontSize: 13, color: "#C9A84C", textTransform: "uppercase" }}>Visão Estratégica</h3>
                 <p style={{ margin: 0, color: "#DDD", fontSize: 14, lineHeight: 1.6 }}>{analiseProfunda.resumo_estrategico}</p>
               </div>
               <div style={{ background: "#0F0F0F", border: "1px solid #1E1E1E", borderRadius: 14, padding: 24 }}>
-                <h3 style={{ margin: "0 0 16px", fontSize: 13, color: "#60A5FA", textTransform: "uppercase", letterSpacing: 1 }}>Análise de Funil</h3>
+                <h3 style={{ margin: "0 0 16px", fontSize: 13, color: "#60A5FA", textTransform: "uppercase" }}>Análise de Funil</h3>
                 <p style={{ margin: 0, color: "#DDD", fontSize: 14, lineHeight: 1.6 }}>{analiseProfunda.analise_funil}</p>
               </div>
             </div>
 
-            {/* Gargalos e Plano de Ação */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))", gap: 20, marginBottom: 24 }}>
               <div style={{ background: "#1A0F0F", border: "1px solid #ef444444", borderRadius: 14, padding: 24 }}>
-                <h3 style={{ margin: "0 0 16px", fontSize: 13, color: "#ef4444", textTransform: "uppercase", letterSpacing: 1, display: "flex", gap: 8 }}>
-                  <span>⚠️</span> Gargalos Identificados
-                </h3>
+                <h3 style={{ margin: "0 0 16px", fontSize: 13, color: "#ef4444", textTransform: "uppercase" }}>⚠️ Gargalos</h3>
                 <ul style={{ margin: 0, paddingLeft: 20, color: "#FCA5A5", fontSize: 14, lineHeight: 1.6 }}>
                   {analiseProfunda.gargalos_identificados?.map((gargalo, i) => <li key={i} style={{ marginBottom: 8 }}>{gargalo}</li>)}
                 </ul>
               </div>
-
               <div style={{ background: "#0F1A12", border: "1px solid #22c55e44", borderRadius: 14, padding: 24 }}>
-                <h3 style={{ margin: "0 0 16px", fontSize: 13, color: "#22c55e", textTransform: "uppercase", letterSpacing: 1, display: "flex", gap: 8 }}>
-                  <span>✅</span> Plano de Ação (Próximos Passos)
-                </h3>
+                <h3 style={{ margin: "0 0 16px", fontSize: 13, color: "#22c55e", textTransform: "uppercase" }}>✅ Plano de Ação</h3>
                 <ul style={{ margin: 0, paddingLeft: 20, color: "#86EFAC", fontSize: 14, lineHeight: 1.6 }}>
                   {analiseProfunda.plano_de_acao?.map((acao, i) => <li key={i} style={{ marginBottom: 8 }}>{acao}</li>)}
                 </ul>
               </div>
             </div>
-
-            {/* Insights por Campanha Específica */}
-            {analiseProfunda.insights_campanhas && analiseProfunda.insights_campanhas.length > 0 && (
-              <div style={{ background: "#0F0F0F", border: "1px solid #1E1E1E", borderRadius: 14, padding: 24 }}>
-                <h3 style={{ margin: "0 0 16px", fontSize: 13, color: "#A855F7", textTransform: "uppercase", letterSpacing: 1 }}>Micro-Gestão: Insights por Campanha</h3>
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  {analiseProfunda.insights_campanhas.map((camp, idx) => (
-                    <div key={idx} style={{ background: "#141414", padding: "16px", borderRadius: 8, borderLeft: "4px solid #A855F7" }}>
-                      <strong style={{ color: "#FFF", display: "block", marginBottom: 6 }}>{camp.nome_campanha}</strong>
-                      <span style={{ color: "#AAA", fontSize: 13, lineHeight: 1.5 }}>{camp.insight}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         )}
 
-        {/* ESTADO INICIAL VAZIO */}
         {!coletandoDados && !dadosBase && !erro && (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", paddingTop: 40, gap: 16 }}>
             <div style={{ fontSize: 48, opacity: 0.3 }}>📦</div>
-            <p style={{ color: "#555", textAlign: "center", maxWidth: 420, fontSize: 13, lineHeight: 1.6 }}>
-              Selecione o cliente e clique em <b>Coletar Dados</b> para montar o seu Dashboard instantâneo.
+            <p style={{ color: "#555", textAlign: "center", fontSize: 13 }}>
+              Selecione o cliente e descreva o filtro para começar.
             </p>
           </div>
         )}
       </div>
 
       <style>{`
-        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         * { box-sizing: border-box; }
-        ::-webkit-scrollbar { height: 8px; width: 8px; }
-        ::-webkit-scrollbar-track { background: #0A0A0A; }
-        ::-webkit-scrollbar-thumb { background: #1E1E1E; border-radius: 4px; }
       `}</style>
     </div>
   )
