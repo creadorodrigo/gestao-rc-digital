@@ -38,6 +38,11 @@ export interface Cliente {
     vigencia_fim?: string
     nps?: number
     criado_em?: string
+    // NPS feedback
+    nps_score?: number
+    nps_pontos_fortes?: string
+    nps_pontos_fracos?: string
+    nps_respondido_em?: string
 }
 
 export interface Tarefa {

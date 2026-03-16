@@ -10,6 +10,7 @@ import RelatoriosIA from './pages/RelatoriosIA'
 import Time from './pages/Time'
 import CRM from './pages/CRM'
 import Reunioes from './pages/Reunioes'
+import DashboardNPS from './pages/DashboardNPS'
 
 function ProtectedRoute({ children, requiredRole }: { children: React.ReactNode; requiredRole?: 'admin' }) {
   const { user, loading } = useAuth()
@@ -48,6 +49,7 @@ function AppRoutes() {
       <Route path="/relatoriosia" element={<ProtectedRoute><RelatoriosIA /></ProtectedRoute>} />
       <Route path="/time" element={<ProtectedRoute requiredRole="admin"><Time /></ProtectedRoute>} />
       <Route path="/crm" element={<ProtectedRoute requiredRole="admin"><CRM /></ProtectedRoute>} />
+      <Route path="/nps" element={<ProtectedRoute requiredRole="admin"><DashboardNPS /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
