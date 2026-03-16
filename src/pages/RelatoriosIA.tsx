@@ -109,7 +109,7 @@ export default function RelatoriosIA() {
 
       // 2. Haiku estrutura os dados brutos
       const resProxy = await mcpClaudeProxy({
-        model: 'claude-haiku-4-5-20251001',
+        model: 'claude-haiku-4-5',
         max_tokens: 1500,
         system: `Você é um analista de Meta Ads. Recebe dados brutos de insights e retorna um JSON estruturado.
 Retorne APENAS JSON válido no seguinte formato, sem markdown, sem explicações:
@@ -158,7 +158,7 @@ Retorne APENAS JSON válido no seguinte formato, sem markdown, sem explicações
 
     try {
       const resProxy = await mcpClaudeProxy({
-        model: 'claude-sonnet-4-5-20251001',
+        model: 'claude-sonnet-4-6',
         max_tokens: 2000,
         system: `Você é especialista em performance de tráfego pago. Analisa dados de Meta Ads e fornece insights estratégicos acionáveis.
 Retorne APENAS JSON válido no seguinte formato, sem markdown, sem explicações:
