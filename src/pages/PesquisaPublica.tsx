@@ -194,18 +194,6 @@ export default function PesquisaPublica() {
                       </button>
                     ))}
                   </div>
-                  {classificacao && (
-                    <div
-                      className="text-center text-sm font-semibold py-2 rounded-lg"
-                      style={{
-                        background: classificacao === 'Promotor' ? '#22c55e15' : classificacao === 'Passivo' ? '#eab30815' : '#ef444415',
-                        color: classificacao === 'Promotor' ? '#22c55e' : classificacao === 'Passivo' ? '#eab308' : '#ef4444',
-                        border: `1px solid ${classificacao === 'Promotor' ? '#22c55e30' : classificacao === 'Passivo' ? '#eab30830' : '#ef444430'}`,
-                      }}
-                    >
-                      {classificacao === 'Promotor' ? '🌟 Promotor' : classificacao === 'Passivo' ? '😐 Passivo' : '😟 Detrator'}
-                    </div>
-                  )}
                 </div>
               )}
 
@@ -256,15 +244,6 @@ export default function PesquisaPublica() {
                       <p className="text-xs text-gray-500 mb-1">Nota NPS</p>
                       <div className="flex items-center gap-2">
                         <span className="text-2xl font-bold font-mono" style={{ color: corScore(score!) }}>{score}</span>
-                        <span
-                          className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                          style={{
-                            background: `${corScore(score!)}20`,
-                            color: corScore(score!),
-                          }}
-                        >
-                          {classificacao}
-                        </span>
                       </div>
                     </div>
                     {pontosFortes && (
