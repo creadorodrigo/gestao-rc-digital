@@ -139,7 +139,8 @@ Retorne APENAS JSON válido no seguinte formato, sem markdown, sem explicações
         }],
       })
 
-      const textoHaiku = resProxy.content?.[0]?.text ?? '{}'
+      const textoHaiku = (resProxy.content?.[0]?.text ?? '{}')
+        .replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim()
       const dados: DadosColetados = JSON.parse(textoHaiku)
       setDadosBase(dados)
       setTimeout(() => resultadoRef.current?.scrollIntoView({ behavior: "smooth" }), 200)
@@ -179,7 +180,8 @@ Retorne APENAS JSON válido no seguinte formato, sem markdown, sem explicações
         }],
       })
 
-      const textoSonnet = resProxy.content?.[0]?.text ?? '{}'
+      const textoSonnet = (resProxy.content?.[0]?.text ?? '{}')
+        .replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim()
       const analise: AnaliseIA = JSON.parse(textoSonnet)
       setAnaliseProfunda(analise)
       setTimeout(() => analiseRef.current?.scrollIntoView({ behavior: "smooth" }), 200)
