@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import { mcpClaudeProxy } from '../lib/mcpClient'
 
 const SUPABASE_URL = 'https://mtckfghzgynimptclvtd.supabase.co'
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10Y2tmZ2h6Z3luaW1wdGNsdnRkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3NjUyMzcsImV4cCI6MjA4ODM0MTIzN30.KmAd7UBD_3GTShGMK4ZQo5EszQSg1FETOfpBN65du18'
@@ -191,24 +192,13 @@ export default function Reunioes() {
       if (erroSave) throw new Error(erroSave.message)
       setReuniaoAtualId(reuniao.id)
 
-      // Chama Claude via proxy seguro (Edge Function)
-      const { data: { session } } = await supabase!.auth.getSession()
-      const token = session?.access_token ?? ''
-      const res = await fetch('https://mtckfghzgynimptclvtd.supabase.co/functions/v1/claude-proxy', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10Y2tmZ2h6Z3luaW1wdGNsdnRkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3NjUyMzcsImV4cCI6MjA4ODM0MTIzN30.KmAd7UBD_3GTShGMK4ZQo5EszQSg1FETOfpBN65du18',
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 2000,
-          system: buildSystemPrompt(clientes),
-          messages: [{ role: 'user', content: formAnotacoes.trim() }],
-        }),
+      // Chama Claude via servidor MCP (VPS)
+      const dataIA = await mcpClaudeProxy({
+        model: 'claude-sonnet-4-5-20251001',
+        max_tokens: 2000,
+        system: buildSystemPrompt(clientes),
+        messages: [{ role: 'user', content: formAnotacoes.trim() }],
       })
-      const dataIA = await res.json()
       const textoIA = dataIA.content?.[0]?.text ?? ''
       const { resumo, tarefas } = parseRespostaIA(textoIA)
 

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react"
 import { createClient } from "@supabase/supabase-js"
+import { mcpTool, mcpClaudeProxy } from "../lib/mcpClient"
 
 const SUPABASE_URL = "https://mtckfghzgynimptclvtd.supabase.co"
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10Y2tmZ2h6Z3luaW1wdGNsdnRkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3NjUyMzcsImV4cCI6MjA4ODM0MTIzN30.KmAd7UBD_3GTShGMK4ZQo5EszQSg1FETOfpBN65du18"
@@ -84,36 +85,61 @@ export default function RelatoriosIA() {
     inputRef.current?.focus()
   }
 
-  // FASE 1: COLETAR
+  // FASE 1: COLETAR — busca dados no MCP e estrutura com Haiku
   async function handleColetarDados() {
     if (!clienteSelecionado || !comando.trim()) return
     setColetandoDados(true)
     setErro(null)
     setDadosBase(null)
     setAnaliseProfunda(null)
-    setDebugMcp("") // Limpa debug anterior
-    setProgresso("Haiku filtrando dados e calculando KPIs...")
+    setDebugMcp("")
+    setProgresso("Buscando insights no Meta Ads...")
 
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      const token = session?.access_token || SUPABASE_KEY
-      const res = await fetch(`${SUPABASE_URL}/functions/v1/relatorios-ia`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          account_id: clienteSelecionado.conta_meta_ads,
-          cliente_nome: clienteSelecionado.nome,
-          comando: comando.trim(),
-          acao: "coletar" 
-        }),
+      // 1. Busca dados brutos diretamente no servidor MCP
+      const insightsResult = await mcpTool<{ data: unknown[] }>('get_insights', {
+        account_id: clienteSelecionado.conta_meta_ads,
+        level: 'campaign',
+        date_preset: 'last_30d',
+      })
+      const dadosBrutos = JSON.stringify(insightsResult.data ?? insightsResult, null, 2)
+      setDebugMcp(dadosBrutos.slice(0, 2000))
+
+      setProgresso("Haiku calculando KPIs e estruturando dados...")
+
+      // 2. Haiku estrutura os dados brutos
+      const resProxy = await mcpClaudeProxy({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1500,
+        system: `Você é um analista de Meta Ads. Recebe dados brutos de insights e retorna um JSON estruturado.
+Retorne APENAS JSON válido no seguinte formato, sem markdown, sem explicações:
+{
+  "kpis": {
+    "investimento": "R$ X.XXX,XX",
+    "alcance": "XXX.XXX",
+    "impressoes": "X.XXX.XXX",
+    "ctr": "X,XX%",
+    "cpc": "R$ X,XX",
+    "cpm": "R$ XX,XX",
+    "visualizacoes_pagina": "XXX",
+    "carrinhos": "XXX",
+    "compras": "XXX",
+    "roas": "X,XX",
+    "mensagens_iniciadas": "XXX"
+  },
+  "campanhas": [
+    { "nome": "Nome da Campanha", "spend": "R$ X.XXX,XX", "roas": "X,XX", "compras": "XXX", "status": "ACTIVE" }
+  ]
+}`,
+        messages: [{
+          role: 'user',
+          content: `Cliente: ${clienteSelecionado.nome}\nFiltro do usuário: ${comando.trim()}\n\nDados brutos:\n${dadosBrutos.slice(0, 8000)}`
+        }],
       })
 
-      const data = await res.json()
-      if (!res.ok || !data.success) throw new Error(data.error || "Erro na coleta")
-
-      setDadosBase(data.dados)
-      setDebugMcp(typeof data.debug_mcp === 'string' ? data.debug_mcp : JSON.stringify(data.debug_mcp, null, 2))
-      
+      const textoHaiku = resProxy.content?.[0]?.text ?? '{}'
+      const dados: DadosColetados = JSON.parse(textoHaiku)
+      setDadosBase(dados)
       setTimeout(() => resultadoRef.current?.scrollIntoView({ behavior: "smooth" }), 200)
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro desconhecido")
@@ -123,30 +149,37 @@ export default function RelatoriosIA() {
     }
   }
 
-  // FASE 2: ANALISAR
+  // FASE 2: ANALISAR — Sonnet gera análise estratégica
   async function handleAnalisarIA() {
     if (!clienteSelecionado || !dadosBase) return
     setAnalisandoIA(true)
     setErro(null)
-    setProgresso("Sonnet 4.5 gerando plano de ação...")
+    setProgresso("Sonnet gerando análise estratégica e plano de ação...")
 
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      const token = session?.access_token || SUPABASE_KEY
-      const res = await fetch(`${SUPABASE_URL}/functions/v1/relatorios-ia`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          account_id: clienteSelecionado.conta_meta_ads,
-          cliente_nome: clienteSelecionado.nome,
-          comando: comando.trim(),
-          acao: "analisar",
-          dados_coletados: dadosBase
-        }),
+      const resProxy = await mcpClaudeProxy({
+        model: 'claude-sonnet-4-5-20251001',
+        max_tokens: 2000,
+        system: `Você é especialista em performance de tráfego pago. Analisa dados de Meta Ads e fornece insights estratégicos acionáveis.
+Retorne APENAS JSON válido no seguinte formato, sem markdown, sem explicações:
+{
+  "resumo_estrategico": "Resumo executivo em 3-5 linhas com os principais destaques",
+  "analise_funil": "Análise do funil de conversão identificando gargalos",
+  "gargalos_identificados": ["gargalo 1", "gargalo 2"],
+  "plano_de_acao": ["ação 1 com prazo e responsável", "ação 2"],
+  "insights_campanhas": [
+    { "nome_campanha": "Nome", "insight": "Insight específico da campanha" }
+  ]
+}`,
+        messages: [{
+          role: 'user',
+          content: `Cliente: ${clienteSelecionado.nome}\nComando: ${comando.trim()}\n\nDados coletados:\n${JSON.stringify(dadosBase, null, 2)}`
+        }],
       })
-      const data = await res.json()
-      if (!res.ok || !data.success) throw new Error(data.error || "Erro na análise")
-      setAnaliseProfunda(data.analise)
+
+      const textoSonnet = resProxy.content?.[0]?.text ?? '{}'
+      const analise: AnaliseIA = JSON.parse(textoSonnet)
+      setAnaliseProfunda(analise)
       setTimeout(() => analiseRef.current?.scrollIntoView({ behavior: "smooth" }), 200)
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro desconhecido")
