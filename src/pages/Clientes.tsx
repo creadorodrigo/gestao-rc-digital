@@ -12,6 +12,7 @@ interface Cliente {
   faturado_ate_data: number | null; responsaveis: string[]
   contrato_mensal: number | null; vigencia_inicio: string | null
   vigencia_fim: string | null; nps: number | null; criado_em: string
+  nps_token: string | null
 }
 
 interface FormC {
@@ -209,6 +210,7 @@ export default function Clientes() {
   const [modal, setModal] = useState<null | 'novo' | Cliente>(null)
   const [modalVer, setModalVer] = useState<Cliente | null>(null)
   const [clienteNps, setClienteNps] = useState<Cliente | null>(null)
+  const [linkCopiado, setLinkCopiado] = useState(false)
   const [form, setForm] = useState<FormC>(FORM_INICIAL)
 
   const buscarTudo = useCallback(async () => {
@@ -507,6 +509,19 @@ export default function Clientes() {
               <div className="flex items-center gap-2">
                 {isAdmin && (
                   <>
+                    {modalVer.nps_token && (
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(`${window.location.origin}/pesquisa/${modalVer.nps_token}`)
+                          setLinkCopiado(true)
+                          setTimeout(() => setLinkCopiado(false), 2000)
+                        }}
+                        className="text-gray-500 hover:text-blue-400 transition-colors text-sm px-3 py-1.5 rounded-lg"
+                        style={{ border: '1px solid #2A2A2A', color: linkCopiado ? '#22c55e' : undefined }}
+                      >
+                        {linkCopiado ? '✓ Copiado!' : '🔗 Copiar Link'}
+                      </button>
+                    )}
                     <button onClick={() => { setClienteNps(modalVer) }}
                       className="text-gray-500 hover:text-yellow-400 transition-colors text-sm px-3 py-1.5 rounded-lg"
                       style={{ border: '1px solid #2A2A2A' }}
