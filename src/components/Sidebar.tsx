@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, CheckSquare, UserCheck, TrendingUp, LogOut, Building2, NotebookPen, PanelLeftClose, PanelLeftOpen, BarChart3 } from 'lucide-react'
+import { LayoutDashboard, CheckSquare, UserCheck, TrendingUp, LogOut, Building2, NotebookPen, PanelLeftClose, PanelLeftOpen, BarChart3, Star } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 
 // ── Context para expor o estado collapsed ao Layout ──────────────────────────
@@ -54,6 +54,7 @@ export default function Sidebar() {
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', adminOnly: true },
     { to: '/time', icon: UserCheck, label: 'Time', adminOnly: true },
     { to: '/crm', icon: TrendingUp, label: 'CRM', adminOnly: true },
+    { to: '/nps', icon: Star, label: 'NPS', adminOnly: true },
   ]
 
   const visibleItems = navItems.filter(item => !item.adminOnly || user?.role === 'admin')

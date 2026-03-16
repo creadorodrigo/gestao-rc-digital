@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import PesquisaNPS from '../components/PesquisaNPS'
 
 interface Usuario { id: string; nome: string; email: string; role: string }
 
@@ -207,6 +208,7 @@ export default function Clientes() {
   const [filtroResponsavel, setFiltroResponsavel] = useState('')
   const [modal, setModal] = useState<null | 'novo' | Cliente>(null)
   const [modalVer, setModalVer] = useState<Cliente | null>(null)
+  const [clienteNps, setClienteNps] = useState<Cliente | null>(null)
   const [form, setForm] = useState<FormC>(FORM_INICIAL)
 
   const buscarTudo = useCallback(async () => {
@@ -504,10 +506,16 @@ export default function Clientes() {
               </div>
               <div className="flex items-center gap-2">
                 {isAdmin && (
-                  <button onClick={() => { setModalVer(null); abrirEdicao(modalVer) }}
-                    className="text-gray-500 hover:text-yellow-400 transition-colors text-sm px-3 py-1.5 rounded-lg"
-                    style={{ border: '1px solid #2A2A2A' }}
-                    title="Editar">✏️ Editar</button>
+                  <>
+                    <button onClick={() => { setClienteNps(modalVer) }}
+                      className="text-gray-500 hover:text-yellow-400 transition-colors text-sm px-3 py-1.5 rounded-lg"
+                      style={{ border: '1px solid #2A2A2A' }}
+                      title="Coletar NPS">⭐ NPS</button>
+                    <button onClick={() => { setModalVer(null); abrirEdicao(modalVer) }}
+                      className="text-gray-500 hover:text-yellow-400 transition-colors text-sm px-3 py-1.5 rounded-lg"
+                      style={{ border: '1px solid #2A2A2A' }}
+                      title="Editar">✏️ Editar</button>
+                  </>
                 )}
                 <button onClick={() => setModalVer(null)}
                   className="text-gray-500 hover:text-gray-300 text-xl ml-1">✕</button>
@@ -793,6 +801,16 @@ export default function Clientes() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ══ MODAL NPS ══ */}
+      {clienteNps && (
+        <PesquisaNPS
+          clienteId={clienteNps.id}
+          clienteNome={clienteNps.nome}
+          onClose={() => setClienteNps(null)}
+          onSuccess={buscarTudo}
+        />
       )}
     </div>
   )
