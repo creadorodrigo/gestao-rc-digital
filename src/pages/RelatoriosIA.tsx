@@ -97,8 +97,10 @@ export default function RelatoriosIA() {
 
     try {
       // 1. Busca dados brutos diretamente no servidor MCP
+      const accountId = clienteSelecionado.conta_meta_ads ?? ''
+      const accountIdFormatado = accountId.startsWith('act_') ? accountId : `act_${accountId}`
       const insightsResult = await mcpTool<{ data: unknown[] }>('get_insights', {
-        account_id: clienteSelecionado.conta_meta_ads,
+        account_id: accountIdFormatado,
         level: 'campaign',
         date_preset: 'last_30d',
       })
