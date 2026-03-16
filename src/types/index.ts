@@ -43,6 +43,7 @@ export interface Cliente {
     nps_pontos_fortes?: string
     nps_pontos_fracos?: string
     nps_respondido_em?: string
+    nps_token?: string
 }
 
 export interface Tarefa {

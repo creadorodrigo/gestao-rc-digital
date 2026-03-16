@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Star, Users, TrendingUp, ThumbsUp, ThumbsDown, Minus, RefreshCw } from 'lucide-react'
+import { Star, Users, TrendingUp, ThumbsUp, ThumbsDown, Minus, RefreshCw, Link2, Check } from 'lucide-react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { supabase } from '../lib/supabase'
 import type { Cliente } from '../types'
@@ -37,6 +37,7 @@ export default function DashboardNPS() {
   const [erro, setErro] = useState<string | null>(null)
   const [filtro, setFiltro] = useState<Filtro>('Todos')
   const [clienteNps, setClienteNps] = useState<Cliente | null>(null)
+  const [linkCopiado, setLinkCopiado] = useState<string | null>(null)
 
   const buscar = useCallback(async () => {
     setLoading(true)
@@ -44,7 +45,7 @@ export default function DashboardNPS() {
     try {
       const { data, error } = await supabase!
         .from('clientes')
-        .select('id, nome, status, nps_score, nps_pontos_fortes, nps_pontos_fracos, nps_respondido_em')
+        .select('id, nome, status, nps_score, nps_pontos_fortes, nps_pontos_fracos, nps_respondido_em, nps_token')
         .order('nome')
       if (error) throw new Error(error.message)
       setClientes((data as Cliente[]) ?? [])
@@ -256,7 +257,7 @@ export default function DashboardNPS() {
             {/* Table header */}
             <div
               className="grid text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3"
-              style={{ borderBottom: '1px solid #1E1E1E', gridTemplateColumns: '1.5fr 100px 90px 1fr 1fr 110px 120px' }}
+              style={{ borderBottom: '1px solid #1E1E1E', gridTemplateColumns: '1.5fr 100px 90px 1fr 1fr 110px 120px 120px' }}
             >
               <span>Cliente</span>
               <span>Status</span>
@@ -265,13 +266,14 @@ export default function DashboardNPS() {
               <span>Melhorias</span>
               <span>Respondido em</span>
               <span></span>
+              <span>Link</span>
             </div>
             {listaFiltrada.map((c, idx) => (
               <div
                 key={c.id}
                 className="grid items-center px-4 py-3 text-sm hover:bg-dark-300 transition-colors"
                 style={{
-                  gridTemplateColumns: '1.5fr 100px 90px 1fr 1fr 110px 120px',
+                  gridTemplateColumns: '1.5fr 100px 90px 1fr 1fr 110px 120px 120px',
                   borderBottom: idx < listaFiltrada.length - 1 ? '1px solid #1E1E1E' : 'none',
                 }}
               >
@@ -324,7 +326,7 @@ export default function DashboardNPS() {
                   {c.nps_respondido_em ? fmtData(c.nps_respondido_em) : <span className="text-gray-600">Não respondeu</span>}
                 </span>
 
-                {/* Action */}
+                {/* Action: Coletar NPS */}
                 <button
                   onClick={() => setClienteNps(c)}
                   className="btn-ghost text-xs py-1 px-2 flex items-center gap-1"
@@ -332,6 +334,26 @@ export default function DashboardNPS() {
                   <Star size={11} className="text-gold" />
                   Coletar NPS
                 </button>
+
+                {/* Action: Copiar Link */}
+                {c.nps_token && (
+                  <button
+                    onClick={() => {
+                      const link = `${window.location.origin}/pesquisa/${c.nps_token}`
+                      navigator.clipboard.writeText(link)
+                      setLinkCopiado(c.id)
+                      setTimeout(() => setLinkCopiado(null), 2000)
+                    }}
+                    className="btn-ghost text-xs py-1 px-2 flex items-center gap-1"
+                    title={`${window.location.origin}/pesquisa/${c.nps_token}`}
+                    style={linkCopiado === c.id ? { color: '#22c55e' } : {}}
+                  >
+                    {linkCopiado === c.id
+                      ? <><Check size={11} /> Copiado!</>
+                      : <><Link2 size={11} /> Copiar Link</>
+                    }
+                  </button>
+                )}
               </div>
             ))}
           </div>
