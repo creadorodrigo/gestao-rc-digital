@@ -194,7 +194,7 @@ export default function Reunioes() {
 
       // Chama Claude via servidor MCP (VPS)
       const dataIA = await mcpClaudeProxy({
-        model: 'claude-sonnet-4-5-20251001',
+        model: 'claude-sonnet-4-6',
         max_tokens: 2000,
         system: buildSystemPrompt(clientes),
         messages: [{ role: 'user', content: formAnotacoes.trim() }],
