@@ -66,6 +66,23 @@ type AnaliseIA = {
   insights_campanhas: Array<{ nome_campanha: string; insight: string }>
 }
 
+function extractJSON(text: string): string {
+  // Remove markdown code fences
+  let s = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim()
+  // Find first { or [ and last matching bracket
+  const start = s.search(/[{[]/)
+  if (start === -1) return '{}'
+  const openChar = s[start]
+  const closeChar = openChar === '{' ? '}' : ']'
+  let depth = 0
+  let end = -1
+  for (let i = start; i < s.length; i++) {
+    if (s[i] === openChar) depth++
+    else if (s[i] === closeChar) { depth--; if (depth === 0) { end = i; break } }
+  }
+  return end === -1 ? s.slice(start) : s.slice(start, end + 1)
+}
+
 export default function RelatoriosIA() {
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [clienteSelecionado, setClienteSelecionado] = useState<Cliente | null>(null)
@@ -180,9 +197,7 @@ Retorne APENAS JSON válido, sem markdown, sem explicações:
         }],
       })
 
-      const textoHaiku = (resProxy.content?.[0]?.text ?? '{}')
-        .replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim()
-      const dados: DadosColetados = JSON.parse(textoHaiku)
+      const dados: DadosColetados = JSON.parse(extractJSON(resProxy.content?.[0]?.text ?? '{}'))
 
       // Filtrar campanhas pela palavra-chave
       if (palavraChave.trim()) {
@@ -227,9 +242,7 @@ Retorne APENAS JSON válido, sem markdown, sem explicações:
         }],
       })
 
-      const textoSonnet = (resProxy.content?.[0]?.text ?? '{}')
-        .replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim()
-      const analise: AnaliseIA = JSON.parse(textoSonnet)
+      const analise: AnaliseIA = JSON.parse(extractJSON(resProxy.content?.[0]?.text ?? '{}'))
       setAnaliseProfunda(analise)
       setTimeout(() => analiseRef.current?.scrollIntoView({ behavior: "smooth" }), 200)
     } catch (err) {
