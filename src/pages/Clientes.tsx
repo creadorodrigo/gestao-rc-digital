@@ -222,8 +222,10 @@ export default function Clientes() {
       ])
       if (ec) throw new Error(ec.message)
       if (eu) throw new Error(eu.message)
-      setClientes((cs as Cliente[]) ?? [])
+      const novosClientes = (cs as Cliente[]) ?? []
+      setClientes(novosClientes)
       setUsuarios(us ?? [])
+      setModalVer(prev => prev ? (novosClientes.find(c => c.id === prev.id) ?? prev) : null)
     } catch (e: unknown) {
       setErro(e instanceof Error ? e.message : 'Erro ao carregar')
     } finally { setLoading(false) }
