@@ -46,6 +46,7 @@ export default function DashboardNPS() {
       const { data, error } = await supabase!
         .from('clientes')
         .select('id, nome, status, nps_score, nps_pontos_fortes, nps_pontos_fracos, nps_respondido_em, nps_token')
+        .eq('status', 'Ativo')
         .order('nome')
       if (error) throw new Error(error.message)
       setClientes((data as Cliente[]) ?? [])

@@ -130,7 +130,7 @@ export default function PesquisaPublica() {
             <p className="text-sm text-gray-400">
               Sua resposta foi registrada com sucesso. Valorizamos muito o seu feedback — ele nos ajuda a melhorar continuamente!
             </p>
-            <p className="text-xs text-gray-600 mt-6">RC Digital — Tráfego Pago em Joinville, SC</p>
+            <p className="text-xs text-gray-600 mt-6">RC Digital</p>
           </div>
         )}
 
@@ -307,7 +307,7 @@ export default function PesquisaPublica() {
       </div>
 
       <p className="text-xs text-gray-700 mt-6">
-        © {new Date().getFullYear()} RC Digital — Joinville, SC
+        © {new Date().getFullYear()} RC Digital
       </p>
     </div>
   )
