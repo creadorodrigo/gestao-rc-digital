@@ -60,9 +60,9 @@ export default function Dashboard() {
         }).length, [tarefas])
 
     const npsMedia = useMemo(() => {
-        const com = ativos.filter(c => c.nps !== undefined)
+        const com = ativos.filter(c => c.nps_score !== undefined)
         if (!com.length) return 0
-        return (com.reduce((s, c) => s + (c.nps || 0), 0) / com.length).toFixed(1)
+        return (com.reduce((s, c) => s + (c.nps_score || 0), 0) / com.length).toFixed(1)
     }, [ativos])
 
     const barData = useMemo(() =>
@@ -73,10 +73,10 @@ export default function Dashboard() {
         })), [ativos])
 
     const npsGroups = useMemo(() => {
-        const com = ativos.filter(c => c.nps !== undefined)
-        const promotores = com.filter(c => (c.nps || 0) >= 9).length
-        const neutros = com.filter(c => (c.nps || 0) >= 7 && (c.nps || 0) <= 8).length
-        const detratores = com.filter(c => (c.nps || 0) <= 6).length
+        const com = ativos.filter(c => c.nps_score !== undefined && c.nps_score !== null)
+        const promotores = com.filter(c => (c.nps_score || 0) >= 9).length
+        const neutros = com.filter(c => (c.nps_score || 0) >= 7 && (c.nps_score || 0) <= 8).length
+        const detratores = com.filter(c => (c.nps_score || 0) <= 6).length
         return [
             { name: 'Promotores', value: promotores },
             { name: 'Neutros', value: neutros },

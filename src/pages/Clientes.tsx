@@ -11,7 +11,7 @@ interface Cliente {
   conta_google_ads: string | null; meta_faturamento: number | null
   faturado_ate_data: number | null; responsaveis: string[]
   contrato_mensal: number | null; vigencia_inicio: string | null
-  vigencia_fim: string | null; nps: number | null; criado_em: string
+  vigencia_fim: string | null; nps_score: number | null; criado_em: string
   nps_token: string | null
 }
 
@@ -19,7 +19,7 @@ interface FormC {
   nome: string; site: string; tipo: string; status: string
   investimento_mensal: string; conta_meta_ads: string; conta_google_ads: string
   meta_faturamento: string; faturado_ate_data: string; contrato_mensal: string
-  vigencia_inicio: string; vigencia_fim: string; nps: string
+  vigencia_inicio: string; vigencia_fim: string; nps_score: string
   responsaveis: string[]   // array de UUIDs de usuários
 }
 
@@ -31,7 +31,7 @@ const FORM_INICIAL: FormC = {
   nome: '', site: '', tipo: '', status: 'Ativo',
   investimento_mensal: '', conta_meta_ads: '', conta_google_ads: '',
   meta_faturamento: '', faturado_ate_data: '', contrato_mensal: '',
-  vigencia_inicio: '', vigencia_fim: '', nps: '',
+  vigencia_inicio: '', vigencia_fim: '', nps_score: '',
   responsaveis: [],
 }
 
@@ -244,7 +244,7 @@ export default function Clientes() {
       contrato_mensal: c.contrato_mensal?.toString() ?? '',
       vigencia_inicio: c.vigencia_inicio ?? '',
       vigencia_fim: c.vigencia_fim ?? '',
-      nps: c.nps?.toString() ?? '',
+      nps_score: c.nps_score?.toString() ?? '',
       responsaveis: c.responsaveis ?? [],
     })
     setModal(c); setErro(null)
@@ -269,7 +269,7 @@ export default function Clientes() {
         contrato_mensal: form.contrato_mensal ? parseFloat(form.contrato_mensal) : null,
         vigencia_inicio: form.vigencia_inicio || null,
         vigencia_fim: form.vigencia_fim || null,
-        nps: form.nps ? parseInt(form.nps) : null,
+        nps_score: form.nps_score ? parseInt(form.nps_score) : null,
         responsaveis: form.responsaveis,
       }
       if (modal === 'novo') {
@@ -406,8 +406,8 @@ export default function Clientes() {
                         {isAdmin && c.investimento_mensal && (
                           <span className="text-xs text-gray-500">Inv: {fmt(c.investimento_mensal)}</span>
                         )}
-                        {isAdmin && c.nps && (
-                          <span className="text-xs" style={{ color: c.nps >= 7 ? '#4ade80' : '#f87171' }}>NPS {c.nps}</span>
+                        {isAdmin && c.nps_score != null && (
+                          <span className="text-xs" style={{ color: c.nps_score >= 7 ? '#4ade80' : '#f87171' }}>NPS {c.nps_score}</span>
                         )}
                       </div>
                     </div>
@@ -460,9 +460,9 @@ export default function Clientes() {
                           )}
                           <div className="flex items-center justify-between mt-2">
                             <AvatarResponsaveis ids={c.responsaveis} usuarios={usuarios} />
-                            {isAdmin && c.nps && (
+                            {isAdmin && c.nps_score != null && (
                               <span className="text-xs font-bold"
-                                style={{ color: c.nps >= 7 ? '#4ade80' : '#f87171' }}>NPS {c.nps}</span>
+                                style={{ color: c.nps_score >= 7 ? '#4ade80' : '#f87171' }}>NPS {c.nps_score}</span>
                             )}
                           </div>
                         </div>
@@ -772,7 +772,7 @@ export default function Clientes() {
                     </div>
                     <div>
                       <label className="block text-xs text-gray-400 mb-1">NPS (0–10)</label>
-                      <input type="number" min={0} max={10} value={form.nps} onChange={e => setForm(p => ({ ...p, nps: e.target.value }))}
+                      <input type="number" min={0} max={10} value={form.nps_score} onChange={e => setForm(p => ({ ...p, nps_score: e.target.value }))}
                         placeholder="0–10"
                         className="w-full px-3 py-2 rounded-lg text-sm border border-gray-700 outline-none"
                         style={{ background: '#0A0A0A', color: '#E5E5E5' }} />
