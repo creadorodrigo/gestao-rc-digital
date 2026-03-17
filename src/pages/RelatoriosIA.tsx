@@ -136,7 +136,7 @@ export default function RelatoriosIA() {
       setProgresso("Estruturando KPIs...")
 
       const resProxy = await mcpClaudeProxy({
-        model: 'claude-haiku-4-5',
+        model: 'claude-sonnet-4-6',
         max_tokens: 2000,
         system: `Você é um analista de Meta Ads. Recebe dados brutos de insights e retorna um JSON estruturado.
 
