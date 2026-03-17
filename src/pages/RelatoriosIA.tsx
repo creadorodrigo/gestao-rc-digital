@@ -147,7 +147,7 @@ export default function RelatoriosIA() {
         level: 'campaign',
         date_preset: periodo,
       })
-      const dadosBrutos = JSON.stringify(insightsResult.data ?? insightsResult, null, 2)
+      const dadosBrutos = JSON.stringify(insightsResult.data ?? insightsResult)
       setDebugMcp(dadosBrutos.slice(0, 2000))
 
       setProgresso("Estruturando KPIs...")
@@ -193,7 +193,7 @@ Retorne APENAS JSON válido, sem markdown, sem explicações:
 }`,
         messages: [{
           role: 'user',
-          content: `Cliente: ${clienteSelecionado.nome}\nPeríodo: ${periodo}${palavraChave ? `\nFiltro palavra-chave: ${palavraChave}` : ''}${comando.trim() ? `\nObservação: ${comando.trim()}` : ''}\n\nDados brutos:\n${dadosBrutos.slice(0, 10000)}`
+          content: `Cliente: ${clienteSelecionado.nome}\nPeríodo: ${periodo}${palavraChave ? `\nFiltro palavra-chave: ${palavraChave}` : ''}${comando.trim() ? `\nObservação: ${comando.trim()}` : ''}\n\nDados brutos:\n${dadosBrutos.slice(0, 80000)}`
         }],
       })
 
