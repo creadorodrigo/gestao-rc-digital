@@ -46,6 +46,13 @@ export default function Dashboard() {
             setLoading(false)
         }
         fetchData()
+        const channel = supabase!
+            .channel('dashboard-clientes')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'clientes' }, () => {
+                fetchData()
+            })
+            .subscribe()
+        return () => { supabase!.removeChannel(channel) }
     }, [])
 
     const ativos = useMemo(() => clientes.filter(c => c.status === 'Ativo'), [clientes])

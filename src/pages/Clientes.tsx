@@ -229,7 +229,16 @@ export default function Clientes() {
     } finally { setLoading(false) }
   }, [])
 
-  useEffect(() => { buscarTudo() }, [buscarTudo])
+  useEffect(() => {
+    buscarTudo()
+    const channel = supabase!
+      .channel('clientes-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'clientes' }, () => {
+        buscarTudo()
+      })
+      .subscribe()
+    return () => { supabase!.removeChannel(channel) }
+  }, [buscarTudo])
 
   function abrirNovo() { setForm(FORM_INICIAL); setModal('novo'); setErro(null) }
 
