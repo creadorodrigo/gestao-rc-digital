@@ -45,7 +45,7 @@ export default function ClientModal({ client, isAdmin, onSave, onClose, onDelete
         contrato_mensal: client?.contrato_mensal || 0,
         vigencia_inicio: client?.vigencia_inicio || '',
         vigencia_fim: client?.vigencia_fim || '',
-        nps: client?.nps,
+        nps_score: client?.nps_score,
     })
 
     const set = (field: keyof typeof form) =>
@@ -71,7 +71,7 @@ export default function ClientModal({ client, isAdmin, onSave, onClose, onDelete
         ? Math.min(100, Math.round((form.faturado_ate_data / form.meta_faturamento) * 100))
         : 0
 
-    const npsInfo = NPS_CLASS(form.nps)
+    const npsInfo = NPS_CLASS(form.nps_score)
 
     return (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -135,7 +135,7 @@ export default function ClientModal({ client, isAdmin, onSave, onClose, onDelete
                                     <Info label="Contrato Mensal" value={brl(client.contrato_mensal)} />
                                     <div>
                                         <p className="text-xs text-gray-500 mb-1">NPS</p>
-                                        <p className="font-semibold text-gray-200">{client.nps ?? '—'} <span className={`text-xs ${npsInfo.color}`}>({npsInfo.label})</span></p>
+                                        <p className="font-semibold text-gray-200">{client.nps_score ?? '—'} <span className={`text-xs ${npsInfo.color}`}>({npsInfo.label})</span></p>
                                     </div>
                                     <Info label="Vigência Início" value={fmtDate(client.vigencia_inicio)} />
                                     <Info label="Vigência Fim" value={fmtDate(client.vigencia_fim)} />
@@ -225,7 +225,7 @@ export default function ClientModal({ client, isAdmin, onSave, onClose, onDelete
                                         </div>
                                         <div>
                                             <label className="form-label">NPS (0–10)</label>
-                                            <input type="number" className="form-input font-mono" value={form.nps ?? ''} onChange={e => setForm(f => ({ ...f, nps: e.target.value === '' ? undefined : Number(e.target.value) }))} min={0} max={10} />
+                                            <input type="number" className="form-input font-mono" value={form.nps_score ?? ''} onChange={e => setForm(f => ({ ...f, nps_score: e.target.value === '' ? undefined : Number(e.target.value) }))} min={0} max={10} />
                                         </div>
                                         <div>
                                             <label className="form-label"><Calendar size={10} className="inline mr-1" />Vigência Início</label>
