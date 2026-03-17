@@ -154,7 +154,7 @@ export default function RelatoriosIA() {
 
       const resProxy = await mcpClaudeProxy({
         model: 'claude-sonnet-4-6',
-        max_tokens: 2000,
+        max_tokens: 8000,
         system: `Você é um analista de Meta Ads. Recebe dados brutos de insights e retorna um JSON estruturado.
 
 Para extrair cada KPI, use os campos:
