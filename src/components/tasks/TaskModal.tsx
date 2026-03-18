@@ -61,7 +61,7 @@ export default function TaskModal({ task, clientes, membros, defaultStatus, onSa
 
                         <div>
                             <label className="form-label">Descrição</label>
-                            <textarea className="form-input resize-none" rows={3} value={form.descricao} onChange={set('descricao')} placeholder="Detalhes da tarefa..." />
+                            <textarea className="form-input" rows={6} value={form.descricao} onChange={set('descricao')} placeholder="Detalhes da tarefa..." style={{ resize: 'vertical', minHeight: '120px' }} />
                         </div>
 
                         <div className="grid grid-cols-2 gap-3">
