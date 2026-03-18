@@ -25,6 +25,23 @@ const PERIODOS = [
   { value: 'this_year',           label: 'Este Ano' },
 ]
 
+type MetaInsight = {
+  campaign_name?: string
+  campaign_id?: string
+  spend?: string
+  impressions?: string
+  reach?: string
+  clicks?: string
+  ctr?: string
+  cpc?: string
+  cpm?: string
+  frequency?: string
+  effective_status?: string
+  status?: string
+  actions?: Array<{ action_type: string; value: string }>
+  website_purchase_roas?: Array<{ action_type: string; value: string }>
+}
+
 type Cliente = {
   id: string | number
   nome: string
@@ -64,6 +81,23 @@ type AnaliseIA = {
   gargalos_identificados: string[]
   plano_de_acao: string[]
   insights_campanhas: Array<{ nome_campanha: string; insight: string }>
+}
+
+function extractJSON(text: string): string {
+  // Remove markdown code fences
+  let s = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim()
+  // Find first { or [ and last matching bracket
+  const start = s.search(/[{[]/)
+  if (start === -1) return '{}'
+  const openChar = s[start]
+  const closeChar = openChar === '{' ? '}' : ']'
+  let depth = 0
+  let end = -1
+  for (let i = start; i < s.length; i++) {
+    if (s[i] === openChar) depth++
+    else if (s[i] === closeChar) { depth--; if (depth === 0) { end = i; break } }
+  }
+  return end === -1 ? s.slice(start) : s.slice(start, end + 1)
 }
 
 export default function RelatoriosIA() {
@@ -125,70 +159,84 @@ export default function RelatoriosIA() {
     try {
       const accountId = clienteSelecionado.conta_meta_ads ?? ''
       const accountIdFormatado = accountId.startsWith('act_') ? accountId : `act_${accountId}`
-      const insightsResult = await mcpTool<{ data: unknown[] }>('get_insights', {
+      const insightsResult = await mcpTool<{ data: MetaInsight[]; total?: number }>('get_insights', {
         account_id: accountIdFormatado,
         level: 'campaign',
         date_preset: periodo,
       })
-      const dadosBrutos = JSON.stringify(insightsResult.data ?? insightsResult, null, 2)
-      setDebugMcp(dadosBrutos.slice(0, 2000))
 
-      setProgresso("Estruturando KPIs...")
+      // Extrair array de campanhas do resultado — suporte aos dois formatos (paginado e completo)
+      const rawData: MetaInsight[] = (insightsResult as unknown as { data: { data: MetaInsight[] } })?.data?.data
+        ?? (insightsResult.data as unknown as MetaInsight[])
+        ?? []
 
+      setDebugMcp(`Total campanhas recebidas: ${rawData.length}\n` + JSON.stringify(rawData.slice(0, 3), null, 2).slice(0, 1500))
+
+      // --- Extrair campanhas DIRETAMENTE do dado bruto (sem Claude) ---
+      const getAction = (actions: MetaInsight['actions'], type: string | string[]) => {
+        const types = Array.isArray(type) ? type : [type]
+        return actions?.find(a => types.some(t => a.action_type === t || a.action_type.includes(t)))?.value ?? '0'
+      }
+      const fmtBRL = (v: string | number) =>
+        `R$ ${parseFloat(String(v) || '0').toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      const fmtNum = (v: string | number) =>
+        parseInt(String(v) || '0').toLocaleString('pt-BR')
+
+      let campanhasExtraidas = rawData.map(c => ({
+        nome: c.campaign_name ?? '',
+        spend: fmtBRL(c.spend ?? '0'),
+        impressoes: fmtNum(c.impressions ?? '0'),
+        ctr: `${parseFloat(c.ctr ?? '0').toFixed(2)}%`,
+        roas: c.website_purchase_roas?.[0]?.value
+          ? parseFloat(c.website_purchase_roas[0].value).toFixed(2)
+          : '0,00',
+        compras: getAction(c.actions, ['purchase', 'offsite_conversion.fb_pixel_purchase']),
+        status: c.effective_status ?? c.status ?? 'ACTIVE',
+      }))
+
+      // Filtro por palavra-chave (frontend)
+      if (palavraChave.trim()) {
+        campanhasExtraidas = campanhasExtraidas.filter(c =>
+          c.nome.toLowerCase().includes(palavraChave.trim().toLowerCase())
+        )
+      }
+
+      setProgresso("Calculando KPIs agregados...")
+
+      // --- Usar Claude APENAS para KPIs agregados ---
+      const dadosBrutos = JSON.stringify(rawData).slice(0, 80000)
       const resProxy = await mcpClaudeProxy({
         model: 'claude-sonnet-4-6',
         max_tokens: 2000,
-        system: `Você é um analista de Meta Ads. Recebe dados brutos de insights e retorna um JSON estruturado.
+        system: `Você é um analista de Meta Ads. Recebe um array JSON de insights de campanhas e retorna APENAS os KPIs totais agregados.
 
-Para extrair cada KPI, use os campos:
-- investimento: campo "spend" (soma de todos)
-- alcance: campo "reach" (soma)
-- impressoes: campo "impressions" (soma)
-- cpm: campo "cpm" (média ponderada por impressões)
-- ctr: campo "ctr" (média, em %)
-- visualizacoes_pagina: actions onde action_type = "landing_page_view"
-- ver_conteudo: actions onde action_type = "view_content" ou "offsite_conversion.fb_pixel_view_content"
-- carrinhos: actions onde action_type = "add_to_cart" ou "offsite_conversion.fb_pixel_add_to_cart"
-- finalizacoes_compra: actions onde action_type = "initiate_checkout" ou "offsite_conversion.fb_pixel_initiate_checkout"
-- compras: actions onde action_type = "purchase" ou "offsite_conversion.fb_pixel_purchase"
-- roas: website_purchase_roas[0].value (média ponderada pelo spend)
-- mensagens_iniciadas: actions onde action_type contém "messaging_conversation_started"
+Calcule somando/ponderando todos os itens do array:
+- investimento: soma de "spend"
+- alcance: soma de "reach"
+- impressoes: soma de "impressions"
+- cpm: (soma spend / soma impressions) * 1000
+- ctr: (soma clicks / soma impressions) * 100
+- visualizacoes_pagina: soma de actions onde action_type = "landing_page_view"
+- ver_conteudo: soma de actions onde action_type contém "view_content"
+- carrinhos: soma de actions onde action_type contém "add_to_cart"
+- finalizacoes_compra: soma de actions onde action_type contém "initiate_checkout"
+- compras: soma de actions onde action_type = "purchase" ou contém "fb_pixel_purchase"
+- roas: soma(spend*roas) / soma(spend) usando website_purchase_roas[0].value
+- mensagens_iniciadas: soma de actions onde action_type contém "messaging_conversation_started"
 
-Retorne APENAS JSON válido, sem markdown, sem explicações:
-{
-  "kpis": {
-    "investimento": "R$ X.XXX,XX",
-    "alcance": "XXX.XXX",
-    "impressoes": "X.XXX.XXX",
-    "cpm": "R$ XX,XX",
-    "ctr": "X,XX%",
-    "visualizacoes_pagina": "XXX",
-    "ver_conteudo": "XXX",
-    "carrinhos": "XXX",
-    "finalizacoes_compra": "XXX",
-    "compras": "XXX",
-    "roas": "X,XX",
-    "mensagens_iniciadas": "XXX"
-  },
-  "campanhas": [
-    { "nome": "Nome", "spend": "R$ X.XXX,XX", "impressoes": "XXX", "ctr": "X,XX%", "roas": "X,XX", "compras": "XXX", "status": "ACTIVE" }
-  ]
-}`,
+Retorne APENAS JSON válido sem markdown:
+{"kpis":{"investimento":"R$ X.XXX,XX","alcance":"XXX.XXX","impressoes":"X.XXX.XXX","cpm":"R$ XX,XX","ctr":"X,XX%","visualizacoes_pagina":"XXX","ver_conteudo":"XXX","carrinhos":"XXX","finalizacoes_compra":"XXX","compras":"XXX","roas":"X,XX","mensagens_iniciadas":"XXX"}}`,
         messages: [{
           role: 'user',
-          content: `Cliente: ${clienteSelecionado.nome}\nPeríodo: ${periodo}${palavraChave ? `\nFiltro palavra-chave: ${palavraChave}` : ''}${comando.trim() ? `\nObservação: ${comando.trim()}` : ''}\n\nDados brutos:\n${dadosBrutos.slice(0, 10000)}`
+          content: `Array de insights (${rawData.length} campanhas):\n${dadosBrutos}`
         }],
       })
 
-      const textoHaiku = (resProxy.content?.[0]?.text ?? '{}')
-        .replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim()
-      const dados: DadosColetados = JSON.parse(textoHaiku)
+      const kpisResult = JSON.parse(extractJSON(resProxy.content?.[0]?.text ?? '{}'))
 
-      // Filtrar campanhas pela palavra-chave
-      if (palavraChave.trim()) {
-        dados.campanhas = dados.campanhas.filter(c =>
-          c.nome.toLowerCase().includes(palavraChave.trim().toLowerCase())
-        )
+      const dados: DadosColetados = {
+        kpis: kpisResult.kpis ?? {},
+        campanhas: campanhasExtraidas,
       }
 
       setDadosBase(dados)
@@ -227,9 +275,7 @@ Retorne APENAS JSON válido, sem markdown, sem explicações:
         }],
       })
 
-      const textoSonnet = (resProxy.content?.[0]?.text ?? '{}')
-        .replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim()
-      const analise: AnaliseIA = JSON.parse(textoSonnet)
+      const analise: AnaliseIA = JSON.parse(extractJSON(resProxy.content?.[0]?.text ?? '{}'))
       setAnaliseProfunda(analise)
       setTimeout(() => analiseRef.current?.scrollIntoView({ behavior: "smooth" }), 200)
     } catch (err) {
