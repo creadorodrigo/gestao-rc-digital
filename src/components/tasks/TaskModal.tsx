@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useLayoutEffect, useCallback } from 'react'
 import { X, Calendar, User, Tag, RotateCcw, Building2, AlertCircle } from 'lucide-react'
 import type { Tarefa, TaskStatus, TaskPriority, TaskRecurrence, Cliente, MembroTime } from '../../types'
 
@@ -16,6 +16,20 @@ const PRIORITIES: TaskPriority[] = ['alta', 'média', 'baixa']
 const STATUSES: TaskStatus[] = ['A Fazer', 'Em Andamento', 'Em Revisão', 'Concluído']
 const RECURRENCES: TaskRecurrence[] = ['não', 'diária', 'semanal', 'quinzenal', 'mensal']
 
+const MIN_W = 480
+const MIN_H = 400
+const INIT_W = 560
+const INIT_H = 620
+
+type ResizeDir = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw'
+
+const cursorMap: Record<ResizeDir, string> = {
+    n: 'ns-resize', s: 'ns-resize',
+    e: 'ew-resize', w: 'ew-resize',
+    ne: 'nesw-resize', sw: 'nesw-resize',
+    nw: 'nwse-resize', se: 'nwse-resize',
+}
+
 export default function TaskModal({ task, clientes, membros, defaultStatus, onSave, onDelete, onClose }: TaskModalProps) {
     const [form, setForm] = useState<Omit<Tarefa, 'id' | 'criado_em'>>({
         titulo: task?.titulo || '',
@@ -30,35 +44,68 @@ export default function TaskModal({ task, clientes, membros, defaultStatus, onSa
         recorrencia: task?.recorrencia || 'não',
     })
 
-    // Resize do modal
     const modalRef = useRef<HTMLDivElement>(null)
-    const isResizing = useRef(false)
-    const resizeStart = useRef({ x: 0, y: 0, w: 0, h: 0 })
+    const geom = useRef({ w: INIT_W, h: INIT_H, top: 0, left: 0 })
 
-    const onResizeMouseDown = useCallback((e: React.MouseEvent) => {
+    // Centraliza na abertura
+    useLayoutEffect(() => {
+        const w = INIT_W
+        const h = INIT_H
+        const top = Math.max(0, (window.innerHeight - h) / 2)
+        const left = Math.max(0, (window.innerWidth - w) / 2)
+        geom.current = { w, h, top, left }
+        const el = modalRef.current
+        if (!el) return
+        el.style.width = `${w}px`
+        el.style.height = `${h}px`
+        el.style.top = `${top}px`
+        el.style.left = `${left}px`
+    }, [])
+
+    const makeResizeHandler = useCallback((dir: ResizeDir) => (e: React.MouseEvent) => {
         e.preventDefault()
         e.stopPropagation()
-        const modal = modalRef.current
-        if (!modal) return
-        isResizing.current = true
-        resizeStart.current = {
-            x: e.clientX,
-            y: e.clientY,
-            w: modal.offsetWidth,
-            h: modal.offsetHeight,
-        }
+        const el = modalRef.current
+        if (!el) return
+
+        const startX = e.clientX
+        const startY = e.clientY
+        const { w: startW, h: startH, top: startTop, left: startLeft } = geom.current
+
+        const maxW = window.innerWidth * 0.95
+        const maxH = window.innerHeight * 0.95
 
         const onMouseMove = (ev: MouseEvent) => {
-            if (!isResizing.current || !modal) return
-            const newW = Math.max(480, resizeStart.current.w + (ev.clientX - resizeStart.current.x))
-            const newH = Math.max(400, resizeStart.current.h + (ev.clientY - resizeStart.current.y))
-            modal.style.width = `${newW}px`
-            modal.style.height = `${newH}px`
-            modal.style.maxHeight = `${newH}px`
+            const dx = ev.clientX - startX
+            const dy = ev.clientY - startY
+
+            let w = startW, h = startH, top = startTop, left = startLeft
+
+            if (dir === 'e' || dir === 'ne' || dir === 'se') {
+                w = Math.min(maxW, Math.max(MIN_W, startW + dx))
+            }
+            if (dir === 'w' || dir === 'nw' || dir === 'sw') {
+                const newW = Math.min(maxW, Math.max(MIN_W, startW - dx))
+                left = startLeft + (startW - newW)
+                w = newW
+            }
+            if (dir === 's' || dir === 'se' || dir === 'sw') {
+                h = Math.min(maxH, Math.max(MIN_H, startH + dy))
+            }
+            if (dir === 'n' || dir === 'ne' || dir === 'nw') {
+                const newH = Math.min(maxH, Math.max(MIN_H, startH - dy))
+                top = startTop + (startH - newH)
+                h = newH
+            }
+
+            geom.current = { w, h, top, left }
+            el.style.width = `${w}px`
+            el.style.height = `${h}px`
+            el.style.top = `${top}px`
+            el.style.left = `${left}px`
         }
 
         const onMouseUp = () => {
-            isResizing.current = false
             document.removeEventListener('mousemove', onMouseMove)
             document.removeEventListener('mouseup', onMouseUp)
             document.body.style.userSelect = ''
@@ -66,7 +113,7 @@ export default function TaskModal({ task, clientes, membros, defaultStatus, onSa
         }
 
         document.body.style.userSelect = 'none'
-        document.body.style.cursor = 'nwse-resize'
+        document.body.style.cursor = cursorMap[dir]
         document.addEventListener('mousemove', onMouseMove)
         document.addEventListener('mouseup', onMouseUp)
     }, [])
@@ -85,24 +132,40 @@ export default function TaskModal({ task, clientes, membros, defaultStatus, onSa
     const set = (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
         setForm(f => ({ ...f, [field]: e.target.value }))
 
+    const EDGE = 6   // espessura das bordas
+    const CORNER = 14 // tamanho dos cantos
+
     return (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
             <div
                 ref={modalRef}
                 className="modal-box"
                 style={{
-                    position: 'relative',
+                    position: 'fixed',
                     display: 'flex',
                     flexDirection: 'column',
-                    width: '560px',
-                    minWidth: '480px',
-                    maxWidth: '90vw',
-                    height: 'auto',
-                    minHeight: '400px',
-                    maxHeight: '90vh',
+                    width: INIT_W,
+                    height: INIT_H,
+                    minWidth: MIN_W,
+                    minHeight: MIN_H,
                     overflow: 'hidden',
                 }}
             >
+                {/* ── Handles de resize ───────────────────────────────────────── */}
+
+                {/* Bordas */}
+                <div onMouseDown={makeResizeHandler('n')}  style={{ position:'absolute', top:0, left:CORNER, right:CORNER, height:EDGE, cursor:'ns-resize', zIndex:20 }} />
+                <div onMouseDown={makeResizeHandler('s')}  style={{ position:'absolute', bottom:0, left:CORNER, right:CORNER, height:EDGE, cursor:'ns-resize', zIndex:20 }} />
+                <div onMouseDown={makeResizeHandler('e')}  style={{ position:'absolute', top:CORNER, bottom:CORNER, right:0, width:EDGE, cursor:'ew-resize', zIndex:20 }} />
+                <div onMouseDown={makeResizeHandler('w')}  style={{ position:'absolute', top:CORNER, bottom:CORNER, left:0, width:EDGE, cursor:'ew-resize', zIndex:20 }} />
+
+                {/* Cantos */}
+                <div onMouseDown={makeResizeHandler('nw')} style={{ position:'absolute', top:0, left:0, width:CORNER, height:CORNER, cursor:'nwse-resize', zIndex:21 }} />
+                <div onMouseDown={makeResizeHandler('ne')} style={{ position:'absolute', top:0, right:0, width:CORNER, height:CORNER, cursor:'nesw-resize', zIndex:21 }} />
+                <div onMouseDown={makeResizeHandler('sw')} style={{ position:'absolute', bottom:0, left:0, width:CORNER, height:CORNER, cursor:'nesw-resize', zIndex:21 }} />
+                <div onMouseDown={makeResizeHandler('se')} style={{ position:'absolute', bottom:0, right:0, width:CORNER, height:CORNER, cursor:'nwse-resize', zIndex:21 }} />
+
+                {/* ── Conteúdo ─────────────────────────────────────────────────── */}
                 <div className="modal-header" style={{ flexShrink: 0 }}>
                     <h3 className="section-title">{task ? 'Editar Tarefa' : 'Nova Tarefa'}</h3>
                     <button onClick={onClose} className="btn-ghost p-1.5"><X size={16} /></button>
@@ -197,36 +260,6 @@ export default function TaskModal({ task, clientes, membros, defaultStatus, onSa
                         </button>
                     </div>
                 </form>
-
-                {/* Handle de resize — canto inferior direito */}
-                <div
-                    onMouseDown={onResizeMouseDown}
-                    style={{
-                        position: 'absolute',
-                        bottom: 0,
-                        right: 0,
-                        width: 18,
-                        height: 18,
-                        cursor: 'nwse-resize',
-                        display: 'flex',
-                        alignItems: 'flex-end',
-                        justifyContent: 'flex-end',
-                        padding: '3px',
-                        opacity: 0.4,
-                        transition: 'opacity 0.2s',
-                        zIndex: 10,
-                    }}
-                    onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
-                    onMouseLeave={e => (e.currentTarget.style.opacity = '0.4')}
-                    title="Arrastar para redimensionar"
-                >
-                    {/* Ícone de resize (3 linhas diagonais) */}
-                    <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
-                        <line x1="0" y1="10" x2="10" y2="0" stroke="currentColor" strokeWidth="1.5" opacity="0.5"/>
-                        <line x1="4" y1="10" x2="10" y2="4" stroke="currentColor" strokeWidth="1.5" opacity="0.7"/>
-                        <line x1="8" y1="10" x2="10" y2="8" stroke="currentColor" strokeWidth="1.5"/>
-                    </svg>
-                </div>
             </div>
         </div>
     )
