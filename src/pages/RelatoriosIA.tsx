@@ -83,6 +83,52 @@ type AnaliseIA = {
   insights_campanhas: Array<{ nome_campanha: string; insight: string }>
 }
 
+function aggregateKPIs(rawData: MetaInsight[]): DadosColetados['kpis'] {
+  const sumAction = (actions: MetaInsight['actions'], pred: (t: string) => boolean) =>
+    actions?.reduce((s, a) => pred(a.action_type) ? s + parseFloat(a.value || '0') : s, 0) ?? 0
+
+  let spend = 0, reach = 0, impressions = 0, clicks = 0
+  let vizPagina = 0, verConteudo = 0, carrinhos = 0, finalizacoes = 0, compras = 0, mensagens = 0
+  let weightedRoas = 0
+
+  for (const c of rawData) {
+    const sp = parseFloat(c.spend ?? '0')
+    const im = parseFloat(c.impressions ?? '0')
+    const cl = parseFloat(c.clicks ?? '0')
+    const re = parseFloat(c.reach ?? '0')
+    const ro = parseFloat(c.website_purchase_roas?.[0]?.value ?? '0')
+    spend += sp; reach += re; impressions += im; clicks += cl; weightedRoas += sp * ro
+    vizPagina    += sumAction(c.actions, t => t === 'landing_page_view')
+    verConteudo  += sumAction(c.actions, t => t.includes('view_content'))
+    carrinhos    += sumAction(c.actions, t => t.includes('add_to_cart'))
+    finalizacoes += sumAction(c.actions, t => t.includes('initiate_checkout'))
+    compras      += sumAction(c.actions, t => t === 'purchase' || t.includes('fb_pixel_purchase'))
+    mensagens    += sumAction(c.actions, t => t.includes('messaging_conversation_started'))
+  }
+
+  const cpm  = impressions > 0 ? (spend / impressions) * 1000 : 0
+  const ctr  = impressions > 0 ? (clicks / impressions) * 100 : 0
+  const roas = spend > 0 ? weightedRoas / spend : 0
+  const fmtBRL = (v: number) =>
+    `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  const fmtInt = (v: number) => Math.round(v).toLocaleString('pt-BR')
+
+  return {
+    investimento:        fmtBRL(spend),
+    alcance:             fmtInt(reach),
+    impressoes:          fmtInt(impressions),
+    cpm:                 fmtBRL(cpm),
+    ctr:                 `${ctr.toFixed(2)}%`,
+    visualizacoes_pagina: fmtInt(vizPagina),
+    ver_conteudo:        fmtInt(verConteudo),
+    carrinhos:           fmtInt(carrinhos),
+    finalizacoes_compra: fmtInt(finalizacoes),
+    compras:             fmtInt(compras),
+    roas:                roas.toFixed(2),
+    mensagens_iniciadas: fmtInt(mensagens),
+  }
+}
+
 function extractJSON(text: string): string {
   // Remove markdown code fences
   let s = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim()
@@ -203,39 +249,11 @@ export default function RelatoriosIA() {
 
       setProgresso("Calculando KPIs agregados...")
 
-      // --- Usar Claude APENAS para KPIs agregados ---
-      const dadosBrutos = JSON.stringify(rawData).slice(0, 80000)
-      const resProxy = await mcpClaudeProxy({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 2000,
-        system: `Você é um analista de Meta Ads. Recebe um array JSON de insights de campanhas e retorna APENAS os KPIs totais agregados.
-
-Calcule somando/ponderando todos os itens do array:
-- investimento: soma de "spend"
-- alcance: soma de "reach"
-- impressoes: soma de "impressions"
-- cpm: (soma spend / soma impressions) * 1000
-- ctr: (soma clicks / soma impressions) * 100
-- visualizacoes_pagina: soma de actions onde action_type = "landing_page_view"
-- ver_conteudo: soma de actions onde action_type contém "view_content"
-- carrinhos: soma de actions onde action_type contém "add_to_cart"
-- finalizacoes_compra: soma de actions onde action_type contém "initiate_checkout"
-- compras: soma de actions onde action_type = "purchase" ou contém "fb_pixel_purchase"
-- roas: soma(spend*roas) / soma(spend) usando website_purchase_roas[0].value
-- mensagens_iniciadas: soma de actions onde action_type contém "messaging_conversation_started"
-
-Retorne APENAS JSON válido sem markdown:
-{"kpis":{"investimento":"R$ X.XXX,XX","alcance":"XXX.XXX","impressoes":"X.XXX.XXX","cpm":"R$ XX,XX","ctr":"X,XX%","visualizacoes_pagina":"XXX","ver_conteudo":"XXX","carrinhos":"XXX","finalizacoes_compra":"XXX","compras":"XXX","roas":"X,XX","mensagens_iniciadas":"XXX"}}`,
-        messages: [{
-          role: 'user',
-          content: `Array de insights (${rawData.length} campanhas):\n${dadosBrutos}`
-        }],
-      })
-
-      const kpisResult = JSON.parse(extractJSON(resProxy.content?.[0]?.text ?? '{}'))
+      // --- KPIs agregados em JS — sem chamada Claude ---
+      const kpis = aggregateKPIs(rawData)
 
       const dados: DadosColetados = {
-        kpis: kpisResult.kpis ?? {},
+        kpis,
         campanhas: campanhasExtraidas,
       }
 
@@ -254,25 +272,32 @@ Retorne APENAS JSON válido sem markdown:
     if (!clienteSelecionado || !dadosBase) return
     setAnalisandoIA(true)
     setErro(null)
-    setProgresso("Sonnet gerando análise estratégica e plano de ação...")
+    setProgresso("Haiku gerando análise estratégica e plano de ação...")
 
     try {
+      const campanhasTexto = dadosBase.campanhas
+        .slice(0, 20)
+        .map((c, i) => `${i + 1}. ${c.nome} | ${c.spend} | CTR ${c.ctr} | ROAS ${c.roas} | Compras ${c.compras} | ${c.status}`)
+        .join('\n')
+      const conteudo = [
+        `Cliente: ${clienteSelecionado.nome}`,
+        `Período: ${periodoLabel}`,
+        comando.trim() ? `Observação: ${comando.trim()}` : '',
+        `\nKPIs:`,
+        `Investimento: ${dadosBase.kpis.investimento} | Alcance: ${dadosBase.kpis.alcance} | Impressões: ${dadosBase.kpis.impressoes}`,
+        `CPM: ${dadosBase.kpis.cpm} | CTR: ${dadosBase.kpis.ctr} | Viz.Página: ${dadosBase.kpis.visualizacoes_pagina}`,
+        `Ver Conteúdo: ${dadosBase.kpis.ver_conteudo} | Carrinhos: ${dadosBase.kpis.carrinhos} | Fin.Compra: ${dadosBase.kpis.finalizacoes_compra}`,
+        `Compras: ${dadosBase.kpis.compras} | ROAS: ${dadosBase.kpis.roas} | Mensagens: ${dadosBase.kpis.mensagens_iniciadas}`,
+        `\nCampanhas (${dadosBase.campanhas.length} total${dadosBase.campanhas.length > 20 ? ', top 20' : ''}):`,
+        campanhasTexto,
+      ].filter(Boolean).join('\n')
+
       const resProxy = await mcpClaudeProxy({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 2000,
-        system: `Você é especialista em performance de tráfego pago. Analisa dados de Meta Ads e fornece insights estratégicos acionáveis.
-Retorne APENAS JSON válido, sem markdown, sem explicações:
-{
-  "resumo_estrategico": "Resumo executivo em 3-5 linhas",
-  "analise_funil": "Análise do funil de conversão identificando gargalos",
-  "gargalos_identificados": ["gargalo 1", "gargalo 2"],
-  "plano_de_acao": ["ação 1", "ação 2"],
-  "insights_campanhas": [{ "nome_campanha": "Nome", "insight": "Insight" }]
-}`,
-        messages: [{
-          role: 'user',
-          content: `Cliente: ${clienteSelecionado.nome}\nPeríodo: ${PERIODOS.find(p => p.value === periodo)?.label ?? periodo}${comando.trim() ? `\nObservação: ${comando.trim()}` : ''}\n\nDados coletados:\n${JSON.stringify(dadosBase, null, 2)}`
-        }],
+        model: 'claude-haiku-4-5',
+        max_tokens: 1500,
+        system: `Especialista em Meta Ads. Analisa dados e retorna APENAS JSON válido sem markdown:
+{"resumo_estrategico":"...","analise_funil":"...","gargalos_identificados":["..."],"plano_de_acao":["..."],"insights_campanhas":[{"nome_campanha":"...","insight":"..."}]}`,
+        messages: [{ role: 'user', content: conteudo }],
       })
 
       const analise: AnaliseIA = JSON.parse(extractJSON(resProxy.content?.[0]?.text ?? '{}'))
