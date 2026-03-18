@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { X, Calendar, User, Tag, RotateCcw, Building2, AlertCircle } from 'lucide-react'
 import type { Tarefa, TaskStatus, TaskPriority, TaskRecurrence, Cliente, MembroTime } from '../../types'
 
@@ -30,6 +30,47 @@ export default function TaskModal({ task, clientes, membros, defaultStatus, onSa
         recorrencia: task?.recorrencia || 'não',
     })
 
+    // Resize do modal
+    const modalRef = useRef<HTMLDivElement>(null)
+    const isResizing = useRef(false)
+    const resizeStart = useRef({ x: 0, y: 0, w: 0, h: 0 })
+
+    const onResizeMouseDown = useCallback((e: React.MouseEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+        const modal = modalRef.current
+        if (!modal) return
+        isResizing.current = true
+        resizeStart.current = {
+            x: e.clientX,
+            y: e.clientY,
+            w: modal.offsetWidth,
+            h: modal.offsetHeight,
+        }
+
+        const onMouseMove = (ev: MouseEvent) => {
+            if (!isResizing.current || !modal) return
+            const newW = Math.max(480, resizeStart.current.w + (ev.clientX - resizeStart.current.x))
+            const newH = Math.max(400, resizeStart.current.h + (ev.clientY - resizeStart.current.y))
+            modal.style.width = `${newW}px`
+            modal.style.height = `${newH}px`
+            modal.style.maxHeight = `${newH}px`
+        }
+
+        const onMouseUp = () => {
+            isResizing.current = false
+            document.removeEventListener('mousemove', onMouseMove)
+            document.removeEventListener('mouseup', onMouseUp)
+            document.body.style.userSelect = ''
+            document.body.style.cursor = ''
+        }
+
+        document.body.style.userSelect = 'none'
+        document.body.style.cursor = 'nwse-resize'
+        document.addEventListener('mousemove', onMouseMove)
+        document.addEventListener('mouseup', onMouseUp)
+    }, [])
+
     const handleClienteChange = (id: string) => {
         const cliente = clientes.find(c => c.id === id)
         setForm(f => ({ ...f, cliente_id: id, cliente_nome: cliente?.nome || '' }))
@@ -46,14 +87,29 @@ export default function TaskModal({ task, clientes, membros, defaultStatus, onSa
 
     return (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-            <div className="modal-box">
-                <div className="modal-header">
+            <div
+                ref={modalRef}
+                className="modal-box"
+                style={{
+                    position: 'relative',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    width: '560px',
+                    minWidth: '480px',
+                    maxWidth: '90vw',
+                    height: 'auto',
+                    minHeight: '400px',
+                    maxHeight: '90vh',
+                    overflow: 'hidden',
+                }}
+            >
+                <div className="modal-header" style={{ flexShrink: 0 }}>
                     <h3 className="section-title">{task ? 'Editar Tarefa' : 'Nova Tarefa'}</h3>
                     <button onClick={onClose} className="btn-ghost p-1.5"><X size={16} /></button>
                 </div>
 
-                <form onSubmit={handleSubmit}>
-                    <div className="modal-body">
+                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+                    <div className="modal-body" style={{ flex: 1, overflowY: 'auto' }}>
                         <div>
                             <label className="form-label">Título *</label>
                             <input className="form-input" value={form.titulo} onChange={set('titulo')} placeholder="Descreva a tarefa..." required />
@@ -61,7 +117,14 @@ export default function TaskModal({ task, clientes, membros, defaultStatus, onSa
 
                         <div>
                             <label className="form-label">Descrição</label>
-                            <textarea className="form-input" rows={6} value={form.descricao} onChange={set('descricao')} placeholder="Detalhes da tarefa..." style={{ resize: 'vertical', minHeight: '120px' }} />
+                            <textarea
+                                className="form-input"
+                                rows={8}
+                                value={form.descricao}
+                                onChange={set('descricao')}
+                                placeholder="Detalhes da tarefa..."
+                                style={{ resize: 'vertical', minHeight: '160px' }}
+                            />
                         </div>
 
                         <div className="grid grid-cols-2 gap-3">
@@ -118,7 +181,7 @@ export default function TaskModal({ task, clientes, membros, defaultStatus, onSa
                         </div>
                     </div>
 
-                    <div className="modal-footer">
+                    <div className="modal-footer" style={{ flexShrink: 0 }}>
                         {task && onDelete && (
                             <button
                                 type="button"
@@ -134,6 +197,36 @@ export default function TaskModal({ task, clientes, membros, defaultStatus, onSa
                         </button>
                     </div>
                 </form>
+
+                {/* Handle de resize — canto inferior direito */}
+                <div
+                    onMouseDown={onResizeMouseDown}
+                    style={{
+                        position: 'absolute',
+                        bottom: 0,
+                        right: 0,
+                        width: 18,
+                        height: 18,
+                        cursor: 'nwse-resize',
+                        display: 'flex',
+                        alignItems: 'flex-end',
+                        justifyContent: 'flex-end',
+                        padding: '3px',
+                        opacity: 0.4,
+                        transition: 'opacity 0.2s',
+                        zIndex: 10,
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+                    onMouseLeave={e => (e.currentTarget.style.opacity = '0.4')}
+                    title="Arrastar para redimensionar"
+                >
+                    {/* Ícone de resize (3 linhas diagonais) */}
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+                        <line x1="0" y1="10" x2="10" y2="0" stroke="currentColor" strokeWidth="1.5" opacity="0.5"/>
+                        <line x1="4" y1="10" x2="10" y2="4" stroke="currentColor" strokeWidth="1.5" opacity="0.7"/>
+                        <line x1="8" y1="10" x2="10" y2="8" stroke="currentColor" strokeWidth="1.5"/>
+                    </svg>
+                </div>
             </div>
         </div>
     )
