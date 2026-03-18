@@ -471,9 +471,9 @@ export default function Tarefas() {
               <div>
                 <label className="block text-xs text-gray-400 mb-1">Descrição</label>
                 <textarea value={form.descricao} onChange={e => setForm(p => ({ ...p, descricao: e.target.value }))}
-                  rows={2} placeholder="Detalhes da tarefa..."
-                  className="w-full px-3 py-2 rounded-lg text-sm border border-gray-700 outline-none focus:border-yellow-600 resize-none"
-                  style={{ background: '#0A0A0A', color: '#E5E5E5' }} />
+                  rows={4} placeholder="Detalhes da tarefa..."
+                  className="w-full px-3 py-2 rounded-lg text-sm border border-gray-700 outline-none focus:border-yellow-600"
+                  style={{ background: '#0A0A0A', color: '#E5E5E5', resize: 'vertical', minHeight: '80px' }} />
               </div>
 
               <div>

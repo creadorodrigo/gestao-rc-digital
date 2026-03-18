@@ -119,11 +119,11 @@ export default function TaskModal({ task, clientes, membros, defaultStatus, onSa
                             <label className="form-label">Descrição</label>
                             <textarea
                                 className="form-input"
-                                rows={8}
+                                rows={12}
                                 value={form.descricao}
                                 onChange={set('descricao')}
                                 placeholder="Detalhes da tarefa..."
-                                style={{ resize: 'vertical', minHeight: '160px' }}
+                                style={{ resize: 'vertical', minHeight: '220px', maxHeight: '400px' }}
                             />
                         </div>
 
