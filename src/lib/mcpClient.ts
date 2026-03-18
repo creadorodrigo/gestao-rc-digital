@@ -58,9 +58,18 @@ export async function mcpTool<T = unknown>(
     headers: getHeaders(),
     body: JSON.stringify(args),
   });
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Erro na ferramenta ${toolName}: ${err}`);
+  let json: { success?: boolean; error?: string; data?: T } = {};
+  try { json = await res.json(); } catch { /* ignora parse error */ }
+
+  if (!res.ok || json.success === false) {
+    const raw = json.error ?? '';
+    if (raw.includes('[4]') || raw.toLowerCase().includes('request limit')) {
+      throw new Error('Limite de requisições da API Meta atingido. Aguarde alguns minutos e tente novamente.');
+    }
+    if (raw.includes('[17]') || raw.toLowerCase().includes('user request limit')) {
+      throw new Error('Limite de requisições do usuário atingido. Aguarde e tente novamente.');
+    }
+    throw new Error(raw || `Erro na ferramenta ${toolName}`);
   }
-  return res.json();
+  return json as { success: boolean; data: T };
 }
