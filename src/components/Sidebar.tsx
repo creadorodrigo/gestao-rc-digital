@@ -50,7 +50,7 @@ export default function Sidebar() {
     { to: '/tarefas', icon: CheckSquare, label: 'Tarefas', adminOnly: false },
     { to: '/clientes', icon: Building2, label: 'Clientes', adminOnly: false },
     { to: '/reunioes', icon: NotebookPen, label: 'Reuniões', adminOnly: false },
-    { to: '/relatoriosia', icon: BarChart3, label: 'Relatórios IA', adminOnly: false },
+    { to: '/relatoriosia', icon: BarChart3, label: 'Relatórios IA', adminOnly: true },
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', adminOnly: true },
     { to: '/time', icon: UserCheck, label: 'Time', adminOnly: true },
     { to: '/crm', icon: TrendingUp, label: 'CRM', adminOnly: true },
